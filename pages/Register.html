@@ -8,8 +8,11 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
     />
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
     <title>CCS Sit-in Monitoring System</title>
   </head>
   <body>
@@ -60,7 +63,12 @@
             </div>
 
             <div class="input-text">
-              <select id="course_level" name="course_level" class="form-select" required>
+              <select
+                id="course_level"
+                name="course_level"
+                class="form-select"
+                required
+              >
                 <option value="" disabled selected>Select Year Level</option>
                 <option value="1">1st Year</option>
                 <option value="2">2nd Year</option>
@@ -101,7 +109,12 @@
             </div>
 
             <div class="input-text">
-              <input type="password" id="confirm_password" name="confirm_password" required />
+              <input
+                type="password"
+                id="confirm_password"
+                name="confirm_password"
+                required
+              />
               <label for="confirm_password">Repeat Password</label>
             </div>
 
@@ -116,38 +129,47 @@
     </main>
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    
+
     <script>
       async function handleRegister() {
         // Get form values
-        const id_number = document.getElementById('id_number').value;
-        const last_name = document.getElementById('last_name').value;
-        const first_name = document.getElementById('first_name').value;
-        const middle_name = document.getElementById('middle_name').value;
-        const course_level = document.getElementById('course_level').value;
-        const course = document.getElementById('course').value;
-        const address = document.getElementById('address').value;
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const confirm_password = document.getElementById('confirm_password').value;
+        const id_number = document.getElementById("id_number").value;
+        const last_name = document.getElementById("last_name").value;
+        const first_name = document.getElementById("first_name").value;
+        const middle_name = document.getElementById("middle_name").value;
+        const course_level = document.getElementById("course_level").value;
+        const course = document.getElementById("course").value;
+        const address = document.getElementById("address").value;
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        const confirm_password =
+          document.getElementById("confirm_password").value;
 
         // Validate passwords match
         if (password !== confirm_password) {
-          showMessage('Passwords do not match!', 'danger');
+          showMessage("Passwords do not match!", "danger");
           return;
         }
 
         // Validate required fields
-        if (!id_number || !last_name || !first_name || !course_level || !course || !email || !password) {
-          showMessage('Please fill in all required fields.', 'danger');
+        if (
+          !id_number ||
+          !last_name ||
+          !first_name ||
+          !course_level ||
+          !course ||
+          !email ||
+          !password
+        ) {
+          showMessage("Please fill in all required fields.", "danger");
           return;
         }
 
         try {
-          const response = await fetch('/api/register', {
-            method: 'POST',
+          const response = await fetch("/api/register", {
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
             },
             body: JSON.stringify({
               id_number,
@@ -158,28 +180,31 @@
               course,
               address,
               email,
-              password
-            })
+              password,
+            }),
           });
 
           const data = await response.json();
 
           if (response.ok) {
-            showMessage('Registration successful! Redirecting to login...', 'success');
+            showMessage(
+              "Registration successful! Redirecting to login...",
+              "success",
+            );
             setTimeout(() => {
-              window.location.href = 'login.html';
+              window.location.href = "login.html";
             }, 2000);
           } else {
-            showMessage(data.error || 'Registration failed', 'danger');
+            showMessage(data.error || "Registration failed", "danger");
           }
         } catch (error) {
-          showMessage('An error occurred. Please try again.', 'danger');
-          console.error('Registration error:', error);
+          showMessage("An error occurred. Please try again.", "danger");
+          console.error("Registration error:", error);
         }
       }
 
       function showMessage(message, type) {
-        const messageDiv = document.getElementById('message');
+        const messageDiv = document.getElementById("message");
         messageDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
       }
     </script>
