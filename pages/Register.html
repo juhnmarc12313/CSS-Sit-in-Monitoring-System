@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="Register.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
+    />
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>CCS Sit-in Monitoring System</title>
+  </head>
+  <body>
+    <div class="nav">
+      <div class="logo">
+        <img
+          src="/image/ccslogo1.png"
+          class="img"
+          alt="uclogo"
+          height="60px"
+          width="60px"
+        />
+        <p class="title">CCS Sit-in Monitoring System</p>
+      </div>
+
+      <div class="links">
+        <a href="../index.html">Home</a>
+        <a href="">Community</a>
+        <a href="aboutus.html">About</a>
+        <a href="login.html">Login</a>
+        <a href="Register.html">Register</a>
+      </div>
+    </div>
+
+    <main>
+      <section class="Register animate__animated animate__fadeInUp">
+        <div class="container-left">
+          <h1>Create Your Account</h1>
+          <form id="registerForm">
+            <div class="input-text">
+              <input type="text" id="id_number" name="id_number" required />
+              <label for="id_number">ID Number</label>
+            </div>
+
+            <div class="input-text">
+              <input type="text" id="last_name" name="last_name" required />
+              <label for="last_name">Last Name</label>
+            </div>
+
+            <div class="input-text">
+              <input type="text" id="first_name" name="first_name" required />
+              <label for="first_name">First Name</label>
+            </div>
+
+            <div class="input-text">
+              <input type="text" id="middle_name" name="middle_name" />
+              <label for="middle_name">Middle Name</label>
+            </div>
+
+            <div class="input-text">
+              <select id="course_level" name="course_level" class="form-select" required>
+                <option value="" disabled selected>Select Year Level</option>
+                <option value="1">1st Year</option>
+                <option value="2">2nd Year</option>
+                <option value="3">3rd Year</option>
+                <option value="4">4th Year</option>
+              </select>
+              <label for="course_level">Course Level</label>
+            </div>
+          </form>
+        </div>
+
+        <div class="container-right">
+          <form id="registerFormRight" style="margin-top: 55px">
+            <div class="input-text">
+              <select id="course" name="course" class="form-select" required>
+                <option value="" disabled selected>Select Course</option>
+                <option value="BSIT">BS in Information Technology</option>
+                <option value="BSCS">BS in Computer Science</option>
+                <option value="BSIS">BS in Information Systems</option>
+                <option value="ACT">BS in Artificial Inteligence (AI)</option>
+              </select>
+              <label for="course">Course</label>
+            </div>
+
+            <div class="input-text">
+              <input type="text" id="address" name="address" />
+              <label for="address">Address</label>
+            </div>
+
+            <div class="input-text">
+              <input type="email" id="email" name="email" required />
+              <label for="email">Email</label>
+            </div>
+
+            <div class="input-text">
+              <input type="password" id="password" name="password" required />
+              <label for="password">Password</label>
+            </div>
+
+            <div class="input-text">
+              <input type="password" id="confirm_password" name="confirm_password" required />
+              <label for="confirm_password">Repeat Password</label>
+            </div>
+
+            <div class="btn">
+              <button type="button" onclick="handleRegister()">Register</button>
+            </div>
+
+            <div id="message" class="mt-3"></div>
+          </form>
+        </div>
+      </section>
+    </main>
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+      async function handleRegister() {
+        // Get form values
+        const id_number = document.getElementById('id_number').value;
+        const last_name = document.getElementById('last_name').value;
+        const first_name = document.getElementById('first_name').value;
+        const middle_name = document.getElementById('middle_name').value;
+        const course_level = document.getElementById('course_level').value;
+        const course = document.getElementById('course').value;
+        const address = document.getElementById('address').value;
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const confirm_password = document.getElementById('confirm_password').value;
+
+        // Validate passwords match
+        if (password !== confirm_password) {
+          showMessage('Passwords do not match!', 'danger');
+          return;
+        }
+
+        // Validate required fields
+        if (!id_number || !last_name || !first_name || !course_level || !course || !email || !password) {
+          showMessage('Please fill in all required fields.', 'danger');
+          return;
+        }
+
+        try {
+          const response = await fetch('/api/register', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              id_number,
+              last_name,
+              first_name,
+              middle_name,
+              course_level: parseInt(course_level),
+              course,
+              address,
+              email,
+              password
+            })
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            showMessage('Registration successful! Redirecting to login...', 'success');
+            setTimeout(() => {
+              window.location.href = 'login.html';
+            }, 2000);
+          } else {
+            showMessage(data.error || 'Registration failed', 'danger');
+          }
+        } catch (error) {
+          showMessage('An error occurred. Please try again.', 'danger');
+          console.error('Registration error:', error);
+        }
+      }
+
+      function showMessage(message, type) {
+        const messageDiv = document.getElementById('message');
+        messageDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+      }
+    </script>
+  </body>
+</html>

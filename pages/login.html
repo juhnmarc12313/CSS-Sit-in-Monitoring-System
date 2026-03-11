@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="login.css">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
+    />
+    <title>CCS Sit-in Monitoring System</title>
+</head>
+<body>
+    <div class="nav">
+      <div class="logo">
+        <img
+          src="/image/ccslogo1.png"
+          class="img"
+          alt="uclogo"
+          height="60px"
+          width="60px"
+        />
+        <p class="title">CCS Sit-in Monitoring System</p>
+      </div>
+
+      <div class="links">
+        <a href="../index.html">Home</a>
+        <a href="">Community</a>
+        <a href="aboutus.html">About</a>
+        <a href="login.html">Login</a>
+        <a href="Register.html">Register</a>
+      </div>
+    </div>
+
+
+    <main>
+        <section class="login animate__animated animate__fadeInUp">            
+        <div class="box">
+          <h1>Login</h1>
+              <div class="flexme">
+            <form id="loginForm">
+                <div class="input-here">
+                    <input type="text" id="id_number" name="id_number" required />
+                    <label for="id_number">ID Number</label>
+                </div>
+
+                <div class="input-here">
+                    <input type="password" id="password" name="password" required />
+                    <label for="password">Password</label>
+                </div>
+
+                <div class="btn">
+              <button type="button" onclick="handleLogin()">Login</button>
+              <p>Don't have an account? <a href="Register.html">Register</a></p>
+            </div>
+
+            <div id="message" class="mt-3"></div>
+
+            </form>
+
+        </div>
+        </div>
+      
+     </section>
+    </main>
+        
+    <script>
+      async function handleLogin() {
+        const id_number = document.getElementById('id_number').value;
+        const password = document.getElementById('password').value;
+
+        // Validate required fields
+        if (!id_number || !password) {
+          showMessage('Please enter both ID Number and password.', 'danger');
+          return;
+        }
+
+        try {
+          const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              id_number,
+              password
+            })
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            showMessage('Login successful! Redirecting...', 'success');
+            // Store user data in localStorage
+            localStorage.setItem('user', JSON.stringify(data.user));
+            localStorage.setItem('session_token', data.session_token);
+            
+            setTimeout(() => {
+              window.location.href = '../index.html';
+            }, 1500);
+          } else {
+            showMessage(data.error || 'Login failed', 'danger');
+          }
+        } catch (error) {
+          showMessage('An error occurred. Please try again.', 'danger');
+          console.error('Login error:', error);
+        }
+      }
+
+      function showMessage(message, type) {
+        const messageDiv = document.getElementById('message');
+        messageDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+      }
+    </script>
+</body>
+</html>
