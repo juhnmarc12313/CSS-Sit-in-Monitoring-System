@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="login.css" />
+    <link rel="stylesheet" href="/pages/login.css" />
+    <link rel="stylesheet" href="/public/dashboard.css" />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
@@ -12,9 +13,10 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
-    <title>CCS Sit-in Monitoring System</title>
+    <title>Login - CCS Sit-in Monitoring System</title>
   </head>
   <body>
+    <!-- Navigation Bar -->
     <div class="nav">
       <div class="logo">
         <img
@@ -27,12 +29,37 @@
         <p class="title">CCS Sit-in Monitoring System</p>
       </div>
 
-      <div class="links">
-        <a href="../index.html">Home</a>
-        <a href="community.html">Community</a>
-        <a href="aboutus.html">About</a>
-        <a href="login.html">Login</a>
-        <a href="Register.html">Register</a>
+      <div class="nav-links" id="nav-links">
+        <a href="/index.html" class="nav-link">
+          <i class="fas fa-home"></i> Home
+        </a>
+        <a href="/pages/community.html" class="nav-link">
+          <i class="fas fa-users"></i> Community
+        </a>
+        <a href="/pages/aboutus.html" class="nav-link">
+          <i class="fas fa-info-circle"></i> About
+        </a>
+        <a href="/pages/login.html" class="nav-link active" id="loginLink">
+          <i class="fas fa-sign-in-alt"></i> Login
+        </a>
+        <a href="/pages/Register.html" class="nav-link" id="registerLink">
+          <i class="fas fa-user-plus"></i> Register
+        </a>
+        <a href="/pages/dashboard.html" class="nav-link" id="dashboardLink" style="display: none;">
+          <i class="fas fa-tachometer-alt"></i> Dashboard
+        </a>
+        <a href="#" class="nav-link" id="logoutLink" onclick="handleLogout()" style="display: none;">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+      </div>
+
+      <div class="nav-right" id="nav-right" style="display: none;">
+        <div class="user-menu">
+          <span class="welcome-user">Welcome, <span id="userName">Student</span></span>
+        </div>
+        <button class="logout-btn" onclick="handleLogout()">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
       </div>
     </div>
 
@@ -43,128 +70,58 @@
           <div class="flexme">
             <form id="loginForm">
               <div class="input-here">
-                <input type="text" id="id_number" name="id_number" required />
-                <label for="id_number">ID Number</label>
+                <input type="text" id="id_number" required />
+                <label>ID Number</label>
               </div>
 
               <div class="input-here">
-                <input type="password" id="password" name="password" required />
-                <label for="password">Password</label>
+                <input type="password" id="password" required />
+                <label>Password</label>
               </div>
 
               <div class="btn">
-                <button type="button" onclick="handleLogin()">Login</button>
-                <p>
-                  Don't have an account? <a href="Register.html">Register</a>
-                </p>
+                <button type="submit">Login</button>
               </div>
-
-              <div id="message" class="mt-3"></div>
             </form>
           </div>
+
+          <p class="register-link">
+            Don't have an account?
+            <a href="Register.html">Register here</a>
+          </p>
         </div>
       </section>
     </main>
-
-    <!-- Modal for Success Message -->
-    <div id="successModal" class="modal">
-      <div class="modal-content animate__animated animate__fadeInUp">
-        <div class="modal-icon success">
-          <i class="fas fa-check-circle"></i>
-        </div>
-        <h2>Login Successful!</h2>
-        <p>Redirecting to your dashboard...</p>
-      </div>
-    </div>
-
-    <!-- Modal for Error Message -->
-    <div id="errorModal" class="modal">
-      <div class="modal-content modal-error animate__animated animate__fadeInUp">
-        <div class="modal-icon error">
-          <i class="fas fa-exclamation-circle"></i>
-        </div>
-        <h2>Login Failed</h2>
-        <p id="errorMessage">Invalid credentials</p>
-        <button class="modal-btn" onclick="closeModal('errorModal')">Try Again</button>
-      </div>
-    </div>
-
+    <script src="/js/navigation.js"></script>
     <script>
-      async function handleLogin() {
-        const id_number = document.getElementById("id_number").value;
-        const password = document.getElementById("password").value;
-
-        // Validate required fields
-        if (!id_number || !password) {
-          alert("Please enter both ID Number and password.", "danger");
-          return;
-        }
-
+      document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const id_number = document.getElementById('id_number').value;
+        const password = document.getElementById('password').value;
+        
         try {
-          const response = await fetch("/api/login", {
-            method: "POST",
+          const response = await fetch('/api/login', {
+            method: 'POST',
             headers: {
-              "Content-Type": "application/json",
+              'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-              id_number,
-              password,
-            }),
+            body: JSON.stringify({ id_number, password })
           });
-
+          
           const data = await response.json();
-
+          
           if (response.ok) {
-            showMessage("Login successful! Redirecting...", "success");
-            // Store only session token in localStorage
-            localStorage.setItem("session_token", data.session_token);
-
-            setTimeout(() => {
-              window.location.href = "dashboard.html";
-            }, 1500);
+            localStorage.setItem('session_token', data.session_token);
+            window.location.href = '/dashboard.html';
           } else {
-            showMessage(data.error || "Login failed", "danger");
+            alert(data.error || 'Login failed');
           }
         } catch (error) {
-          showMessage("An error occurred. Please try again.", "danger");
-          console.error("Login error:", error);
+          console.error('Login error:', error);
+          alert('An error occurred. Please try again.');
         }
-      }
-
-      function showMessage(message, type) {
-        if (type === "success") {
-          showModal("successModal");
-        } else {
-          document.getElementById("errorMessage").textContent = message;
-          showModal("errorModal");
-        }
-      }
-
-      function showModal(modalId) {
-        const modal = document.getElementById(modalId);
-        modal.style.display = "flex";
-        setTimeout(() => {
-          modal.classList.add("show");
-        }, 10);
-      }
-
-      function closeModal(modalId) {
-        const modal = document.getElementById(modalId);
-        modal.classList.remove("show");
-        setTimeout(() => {
-          modal.style.display = "none";
-        }, 300);
-      }
-
-      // Close modal when clicking outside
-      window.onclick = function(event) {
-        if (event.target.classList.contains("modal")) {
-          event.target.classList.remove("show");
-          setTimeout(() => {
-            event.target.style.display = "none";
-          }, 300);
-        }
-      }
+      });
     </script>
   </body>
 </html>

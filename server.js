@@ -47,6 +47,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname)));
 app.use('/uploads', express.static(uploadsDir));
 
+
+//Serve static
+app.use (express.static('public'));
+
 // Initialize SQLite Database
 const db = new sqlite3.Database('./database.db', (err) => {
     if (err) {
@@ -599,6 +603,31 @@ app.post('/api/notifications', (req, res) => {
         }
         res.status(201).json({ message: 'Notification created', id: this.lastID });
     });
+});
+
+// Serve index.html for root path
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, '/index.html'));
+});
+
+app.get('/login.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '/pages/login.html'));
+});
+
+app.get('/register.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '/pages/Register.html'));
+});
+
+app.get('/community.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '/pages/community.html'));
+});
+
+app.get('/aboutus.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '/pages/aboutus.html'));
+});
+
+app.get('/dashboard.html', (req, res) => {
+    res.sendFile(path.join(__dirname, '/pages/dashboard.html'));
 });
 
 // =============================================

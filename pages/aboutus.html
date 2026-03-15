@@ -3,14 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="aboutus.css" />
+    <link rel="stylesheet" href="/pages/aboutus.css" />
+    <link rel="stylesheet" href="/public/dashboard.css" />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
     />
-    <title>CCS Sit-in Monitoring System</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <title>About Us - CCS Sit-in Monitoring System</title>
   </head>
   <body>
+    <!-- Navigation Bar -->
     <div class="nav">
       <div class="logo">
         <img
@@ -23,12 +29,37 @@
         <p class="title">CCS Sit-in Monitoring System</p>
       </div>
 
-      <div class="links">
-        <a href="../index.html">Home</a>
-        <a href="community.html">Community</a>
-        <a href="aboutus.html">About</a>
-        <a href="login.html">Login</a>
-        <a href="Register.html">Register</a>
+      <div class="nav-links" id="nav-links">
+        <a href="/index.html" class="nav-link">
+          <i class="fas fa-home"></i> Home
+        </a>
+        <a href="/pages/community.html" class="nav-link">
+          <i class="fas fa-users"></i> Community
+        </a>
+        <a href="/pages/aboutus.html" class="nav-link active">
+          <i class="fas fa-info-circle"></i> About
+        </a>
+        <a href="/pages/login.html" class="nav-link" id="loginLink">
+          <i class="fas fa-sign-in-alt"></i> Login
+        </a>
+        <a href="/pages/Register.html" class="nav-link" id="registerLink">
+          <i class="fas fa-user-plus"></i> Register
+        </a>
+        <a href="/pages/dashboard.html" class="nav-link" id="dashboardLink" style="display: none;">
+          <i class="fas fa-tachometer-alt"></i> Dashboard
+        </a>
+        <a href="#" class="nav-link" id="logoutLink" onclick="handleLogout()" style="display: none;">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+      </div>
+
+      <div class="nav-right" id="nav-right" style="display: none;">
+        <div class="user-menu">
+          <span class="welcome-user">Welcome, <span id="userName">Student</span></span>
+        </div>
+        <button class="logout-btn" onclick="handleLogout()">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
       </div>
     </div>
 
@@ -45,35 +76,37 @@
             Service)—we strive to produce globally competitive IT professionals.
           </p>
 
-          <h4>The Monitoring System</h4>
-
+          <h4>What We Do</h4>
           <p>
-            This <strong>Sit-in Monitoring System</strong> was developed to
-            streamline the laboratory experience for both students and faculty.
-            Our goal is to ensure:
+            The <strong>CCS Sit-in Monitoring System</strong> is designed to help
+            students track their lab sessions, manage their time effectively,
+            and make the most out of their available sit-in hours. This system
+            allows students to:
           </p>
           <ul>
-            <li>
-              <strong>Efficiency:</strong> Real-time tracking of laboratory
-              hours and availability.
-            </li>
-            <li>
-              <strong>Accountability:</strong> Accurate logging of student
-              "sit-in" sessions for extra practice and research.
-            </li>
-            <li>
-              <strong>Accessibility:</strong> Easy access to lab resources to
-              foster a culture of continuous learning.
-            </li>
+            <li>Reserve lab sessions in advance</li>
+            <li>Track their remaining sit-in hours</li>
+            <li>View their sit-in history</li>
+            <li>Stay updated with announcements</li>
           </ul>
 
-          <h4>Legacy of Excellence</h4>
+          <h4>Our Vision</h4>
+          <p>
+            To be a center of excellence in computing education that empowers
+            students to become innovative leaders in technology.
+          </p>
 
-          <p>Established in <strong>1983</strong>, the College of Computer Studies has been a cornerstone of technological advancement at the University of Cebu. We continue to evolve alongside the industry, ensuring our students are equipped with the skills needed for the digital age.</p>
-
-          
+          <h4>Contact Us</h4>
+          <p>
+            For inquiries, please contact us at:
+            <br />
+            <strong>Email:</strong> ccs@ucl.edu.ph
+            <br />
+            <strong>Phone:</strong> (02) 123-4567
+          </p>
         </div>
       </div>
     </main>
+    <script src="/js/navigation.js"></script>
   </body>
 </html>

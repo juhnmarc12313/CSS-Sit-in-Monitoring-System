@@ -97,26 +97,53 @@ function updateProfilePictureDisplay() {
     const editDefaultIcon = document.getElementById('editDefaultAvatar');
     const removeBtn = document.getElementById('removePhotoBtn');
     
-    if (profilePicture) {
+    console.log('Profile picture path:', profilePicture);
+    console.log('Current user:', currentUser);
+    
+    // Ensure profile picture path has leading slash for absolute path
+    let correctPath = profilePicture;
+    if (profilePicture && !profilePicture.startsWith('/') && !profilePicture.startsWith('http')) {
+        correctPath = '/' + profilePicture;
+        console.log('Corrected profile picture path:', correctPath);
+    }
+    
+    if (correctPath) {
         // Show profile picture
         if (displayImg) {
-            displayImg.src = profilePicture;
+            displayImg.src = correctPath;
             displayImg.style.display = 'block';
+            // Add error handling
+            displayImg.onerror = function() {
+                console.error('Failed to load profile picture:', correctPath);
+                this.style.display = 'none';
+                if (defaultIcon) defaultIcon.style.display = 'block';
+            };
         }
         if (defaultIcon) defaultIcon.style.display = 'none';
         
         if (editImg) {
-            editImg.src = profilePicture;
+            editImg.src = correctPath;
             editImg.style.display = 'block';
+            editImg.onerror = function() {
+                console.error('Failed to load edit profile picture:', correctPath);
+                this.style.display = 'none';
+                if (editDefaultIcon) editDefaultIcon.style.display = 'block';
+            };
         }
         if (editDefaultIcon) editDefaultIcon.style.display = 'none';
         if (removeBtn) removeBtn.style.display = 'inline-flex';
     } else {
         // Show default icon
-        if (displayImg) displayImg.style.display = 'none';
+        if (displayImg) {
+            displayImg.style.display = 'none';
+            displayImg.src = '';
+        }
         if (defaultIcon) defaultIcon.style.display = 'block';
         
-        if (editImg) editImg.style.display = 'none';
+        if (editImg) {
+            editImg.style.display = 'none';
+            editImg.src = '';
+        }
         if (editDefaultIcon) editDefaultIcon.style.display = 'block';
         if (removeBtn) removeBtn.style.display = 'none';
     }
@@ -296,7 +323,7 @@ async function handleProfilePictureChange(event) {
     
     if (!file) return;
     
-    // Validate file type
+    console.log('Uploading file:', file.name, file.size, file.type);
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
     if (!allowedTypes.includes(file.type)) {
         showMessage('Only image files (JPG, PNG, GIF) are allowed!', 'error');
@@ -335,12 +362,17 @@ async function handleProfilePictureChange(event) {
             body: formData
         });
         
+        console.log('Response status:', response.status);
+        
         const data = await response.json();
+        console.log('Response data:', data);
         
         if (response.ok) {
             // Update current user data
             currentUser.profile_picture = data.profile_picture;
             localStorage.setItem('user', JSON.stringify(currentUser));
+            
+            console.log('Profile picture updated to:', data.profile_picture);
             
             // Update all profile picture displays
             updateProfilePictureDisplay();

@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="community.css" />
+    <link rel="stylesheet" href="/pages/community.css" />
+    <link rel="stylesheet" href="/public/dashboard.css" />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
@@ -15,6 +16,7 @@
     <title>Community - CCS Sit-in Monitoring System</title>
   </head>
   <body>
+    <!-- Navigation Bar -->
     <div class="nav">
       <div class="logo">
         <img
@@ -27,12 +29,37 @@
         <p class="title">CCS Sit-in Monitoring System</p>
       </div>
 
-      <div class="links">
-        <a href="../index.html">Home</a>
-        <a href="community.html" class="active">Community</a>
-        <a href="aboutus.html">About</a>
-        <a href="login.html">Login</a>
-        <a href="Register.html">Register</a>
+      <div class="nav-links" id="nav-links">
+        <a href="/index.html" class="nav-link">
+          <i class="fas fa-home"></i> Home
+        </a>
+        <a href="/pages/community.html" class="nav-link active">
+          <i class="fas fa-users"></i> Community
+        </a>
+        <a href="/pages/aboutus.html" class="nav-link">
+          <i class="fas fa-info-circle"></i> About
+        </a>
+        <a href="/pages/login.html" class="nav-link" id="loginLink">
+          <i class="fas fa-sign-in-alt"></i> Login
+        </a>
+        <a href="/pages/Register.html" class="nav-link" id="registerLink">
+          <i class="fas fa-user-plus"></i> Register
+        </a>
+        <a href="/pages/dashboard.html" class="nav-link" id="dashboardLink" style="display: none;">
+          <i class="fas fa-tachometer-alt"></i> Dashboard
+        </a>
+        <a href="#" class="nav-link" id="logoutLink" onclick="handleLogout()" style="display: none;">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+      </div>
+
+      <div class="nav-right" id="nav-right" style="display: none;">
+        <div class="user-menu">
+          <span class="welcome-user">Welcome, <span id="userName">Student</span></span>
+        </div>
+        <button class="logout-btn" onclick="handleLogout()">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
       </div>
     </div>
 
@@ -49,114 +76,53 @@
             <div class="card-icon">
               <i class="fas fa-handshake"></i>
             </div>
-            <h3>🤝 Collaboration & Peer Support</h3>
-            <p>
-              The Community Section connects students and staff of the College of Computer Studies to share updates, collaborate, and support efficient sit-in management.
-            </p>
-            <div class="card-features">
-              <div class="feature-item">
-                <i class="fas fa-comments"></i>
-                <span>Discussion Forums</span>
-              </div>
-              <div class="feature-item">
-                <i class="fas fa-user-friends"></i>
-                <span>Peer Mentoring</span>
-              </div>
-              <div class="feature-item">
-                <i class="fas fa-share-alt"></i>
-                <span>Resource Sharing</span>
-              </div>
-            </div>
+            <h3>Peer Tutoring</h3>
+            <p>Connect with fellow students for academic support and knowledge sharing.</p>
           </div>
 
-          
           <div class="community-card">
-            <div class="card-icon bulletin">
-              <i class="fas fa-bullhorn"></i>
+            <div class="card-icon">
+              <i class="fas fa-code"></i>
             </div>
-            <h3>📢 Integrated Academic Bulletin</h3>
-            <p>
-              The Announcement Feed keeps the CCS community synchronized by broadcasting urgent lab schedule changes, faculty consultations, and technical workshop invites directly to every active sit-in station.
-            </p>
-            <div class="card-features">
-              <div class="feature-item">
-                <i class="fas fa-calendar-alt"></i>
-                <span>Lab Schedule Updates</span>
-              </div>
-              <div class="feature-item">
-                <i class="fas fa-chalkboard-teacher"></i>
-                <span>Faculty Consultations</span>
-              </div>
-              <div class="feature-item">
-                <i class="fas fa-laptop-code"></i>
-                <span>Workshop Invites</span>
-              </div>
-            </div>
+            <h3>Code Collaboration</h3>
+            <p>Work together on projects and share coding tips.</p>
           </div>
 
-          
           <div class="community-card">
-            <div class="card-icon resource">
-              <i class="fas fa-rocket"></i>
+            <div class="card-icon">
+              <i class="fas fa-lightbulb"></i>
             </div>
-            <h3>🚀 Real-Time Resource Sharing</h3>
-            <p>
-              The Resource Hub allows students currently sitting in to instantly share digital assets, project documentation, and troubleshooting guides with peers to streamline collective problem-solving within the College.
-            </p>
-            <div class="card-features">
-              <div class="feature-item">
-                <i class="fas fa-file-code"></i>
-                <span>Code Snippets</span>
-              </div>
-              <div class="feature-item">
-                <i class="fas fa-book"></i>
-                <span>Documentation</span>
-              </div>
-              <div class="feature-item">
-                <i class="fas fa-tools"></i>
-                <span>Troubleshooting Guides</span>
-              </div>
-            </div>
+            <h3>Innovation Hub</h3>
+            <p>Share ideas and collaborate on innovative solutions.</p>
           </div>
-        </div>
 
-        
-        <div class="activity-section">
-          <h2><i class="fas fa-clock"></i> Recent Community Activity</h2>
-          <div class="activity-list">
-            <div class="activity-item">
-              <div class="activity-avatar">
-                <i class="fas fa-user"></i>
-              </div>
-              <div class="activity-content">
-                <h4>New Workshop Announcement</h4>
-                <p>Introduction to Python Programming - March 20, 2026</p>
-                <span class="activity-time">2 hours ago</span>
-              </div>
+          <div class="community-card">
+            <div class="card-icon">
+              <i class="fas fa-calendar-alt"></i>
             </div>
-            <div class="activity-item">
-              <div class="activity-avatar">
-                <i class="fas fa-user"></i>
-              </div>
-              <div class="activity-content">
-                <h4>Lab Schedule Update</h4>
-                <p>Lab 3 will be closed for maintenance on March 22</p>
-                <span class="activity-time">5 hours ago</span>
-              </div>
-            </div>
-            <div class="activity-item">
-              <div class="activity-avatar">
-                <i class="fas fa-user"></i>
-              </div>
-              <div class="activity-content">
-                <h4>New Resource Shared</h4>
-                <p>Data Structures Tutorial PDF uploaded to Resource Hub</p>
-                <span class="activity-time">1 day ago</span>
-              </div>
-            </div>
+            <h3>Events & Workshops</h3>
+            <p>Stay updated with upcoming tech events and workshops.</p>
           </div>
+
+          <div class="community-card">
+            <div class="card-icon">
+              <i class="fas fa-comments"></i>
+            </div>
+            <h3>Discussion Forums</h3>
+            <p>Engage in meaningful discussions about technology trends.</p>
+          </div>
+
+          <div class="community-card">
+            <div class="card-icon">
+              <i class="fas fa-award"></i>
+            </div>
+            <h3>Student Achievements</h3>
+            <p>Celebrate and share student accomplishments.</p>
+          </div>
+
         </div>
       </div>
     </main>
+    <script src="/js/navigation.js"></script>
   </body>
 </html>

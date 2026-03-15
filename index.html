@@ -4,13 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="/public/dashboard.css" />
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
     />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
     <title>CCS Sit-in Monitoring System</title>
   </head>
   <body>
+    <!-- Navigation Bar -->
     <div class="nav">
       <div class="logo">
         <img
@@ -23,12 +29,37 @@
         <p class="title">CCS Sit-in Monitoring System</p>
       </div>
 
-      <div class="links">
-        <a href="index.html">Home</a>
-        <a href="pages/community.html">Community</a>
-        <a href="/pages/aboutus.html">About</a>
-        <a href="/pages/login.html">Login</a>
-        <a href="/pages/Register.html">Register</a>
+      <div class="nav-links" id="nav-links">
+        <a href="/index.html" class="nav-link">
+          <i class="fas fa-home"></i> Home
+        </a>
+        <a href="/pages/community.html" class="nav-link">
+          <i class="fas fa-users"></i> Community
+        </a>
+        <a href="/pages/aboutus.html" class="nav-link">
+          <i class="fas fa-info-circle"></i> About
+        </a>
+        <a href="/pages/login.html" class="nav-link" id="loginLink">
+          <i class="fas fa-sign-in-alt"></i> Login
+        </a>
+        <a href="/pages/Register.html" class="nav-link" id="registerLink">
+          <i class="fas fa-user-plus"></i> Register
+        </a>
+        <a href="/pages/dashboard.html" class="nav-link" id="dashboardLink" style="display: none;">
+          <i class="fas fa-tachometer-alt"></i> Dashboard
+        </a>
+        <a href="#" class="nav-link" id="logoutLink" onclick="handleLogout()" style="display: none;">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+      </div>
+
+      <div class="nav-right" id="nav-right" style="display: none;">
+        <div class="user-menu">
+          <span class="welcome-user">Welcome, <span id="userName">Student</span></span>
+        </div>
+        <button class="logout-btn" onclick="handleLogout()">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
       </div>
     </div>
 
@@ -56,5 +87,6 @@
         </div>
       </div>
     </div>
+    <script src="/js/navigation.js"></script>
   </body>
 </html>
