@@ -8,6 +8,10 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
     />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
     <title>CCS Sit-in Monitoring System</title>
   </head>
   <body>
@@ -62,6 +66,29 @@
       </section>
     </main>
 
+    <!-- Modal for Success Message -->
+    <div id="successModal" class="modal">
+      <div class="modal-content animate__animated animate__fadeInUp">
+        <div class="modal-icon success">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <h2>Login Successful!</h2>
+        <p>Redirecting to your dashboard...</p>
+      </div>
+    </div>
+
+    <!-- Modal for Error Message -->
+    <div id="errorModal" class="modal">
+      <div class="modal-content modal-error animate__animated animate__fadeInUp">
+        <div class="modal-icon error">
+          <i class="fas fa-exclamation-circle"></i>
+        </div>
+        <h2>Login Failed</h2>
+        <p id="errorMessage">Invalid credentials</p>
+        <button class="modal-btn" onclick="closeModal('errorModal')">Try Again</button>
+      </div>
+    </div>
+
     <script>
       async function handleLogin() {
         const id_number = document.getElementById("id_number").value;
@@ -88,7 +115,7 @@
           const data = await response.json();
 
           if (response.ok) {
-            alert("Login successful! Redirecting...", "success");
+            showMessage("Login successful! Redirecting...", "success");
             // Store only session token in localStorage
             localStorage.setItem("session_token", data.session_token);
 
@@ -105,8 +132,38 @@
       }
 
       function showMessage(message, type) {
-        const messageDiv = document.getElementById("message");
-        messageDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+        if (type === "success") {
+          showModal("successModal");
+        } else {
+          document.getElementById("errorMessage").textContent = message;
+          showModal("errorModal");
+        }
+      }
+
+      function showModal(modalId) {
+        const modal = document.getElementById(modalId);
+        modal.style.display = "flex";
+        setTimeout(() => {
+          modal.classList.add("show");
+        }, 10);
+      }
+
+      function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        modal.classList.remove("show");
+        setTimeout(() => {
+          modal.style.display = "none";
+        }, 300);
+      }
+
+      // Close modal when clicking outside
+      window.onclick = function(event) {
+        if (event.target.classList.contains("modal")) {
+          event.target.classList.remove("show");
+          setTimeout(() => {
+            event.target.style.display = "none";
+          }, 300);
+        }
       }
     </script>
   </body>
