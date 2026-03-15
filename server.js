@@ -2,14 +2,50 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const crypto = require('crypto');
+const multer = require('multer');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Configure multer for profile picture uploads
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, uploadsDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname);
+        cb(null, 'profile-' + req.params.id + '-' + uniqueSuffix + ext);
+    }
+});
+
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: function (req, file, cb) {
+        const allowedTypes = /jpeg|jpg|png|gif/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+        if (extname && mimetype) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files (jpeg, jpg, png, gif) are allowed!'));
+        }
+    }
+});
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname)));
+app.use('/uploads', express.static(uploadsDir));
 
 // Initialize SQLite Database
 const db = new sqlite3.Database('./database.db', (err) => {
@@ -40,6 +76,7 @@ function initializeDatabase() {
                 address TEXT,
                 email TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
+                profile_picture TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 is_active BOOLEAN DEFAULT 1
@@ -49,6 +86,12 @@ function initializeDatabase() {
                 console.error('Error creating users table:', err.message);
             } else {
                 console.log('Users table created/verified');
+                // Add profile_picture column if it doesn't exist (for existing databases)
+                db.run(`ALTER TABLE users ADD COLUMN profile_picture TEXT`, (alterErr) => {
+                    if (alterErr && !alterErr.message.includes('duplicate column name')) {
+                        console.error('Error adding profile_picture column:', alterErr.message);
+                    }
+                });
             }
         });
 
@@ -187,9 +230,14 @@ app.post('/api/login', (req, res) => {
                 id: user.id,
                 id_number: user.id_number,
                 name: `${user.first_name} ${user.last_name}`,
+                first_name: user.first_name,
+                last_name: user.last_name,
+                middle_name: user.middle_name,
                 email: user.email,
                 course: user.course,
-                course_level: user.course_level
+                course_level: user.course_level,
+                address: user.address,
+                profile_picture: user.profile_picture
             },
             session_token: session_token
         });
@@ -214,11 +262,55 @@ app.post('/api/logout', (req, res) => {
     });
 });
 
+// Validate session and get user data
+app.get('/api/session/validate', (req, res) => {
+    const session_token = req.headers.authorization?.replace('Bearer ', '') || req.query.token;
+
+    if (!session_token) {
+        return res.status(401).json({ error: 'Session token required' });
+    }
+
+    // Find the session
+    const sessionQuery = `
+        SELECT s.*, u.id as user_id, u.id_number, u.last_name, u.first_name, u.middle_name, 
+               u.course_level, u.course, u.address, u.email, u.profile_picture
+        FROM sessions s
+        JOIN users u ON s.user_id = u.id
+        WHERE s.session_token = ? AND s.logout_time IS NULL
+    `;
+
+    db.get(sessionQuery, [session_token], (err, session) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to validate session: ' + err.message });
+        }
+        if (!session) {
+            return res.status(401).json({ error: 'Invalid or expired session' });
+        }
+
+        // Return user data
+        res.json({
+            user: {
+                id: session.user_id,
+                id_number: session.id_number,
+                name: `${session.first_name} ${session.last_name}`,
+                first_name: session.first_name,
+                last_name: session.last_name,
+                middle_name: session.middle_name,
+                email: session.email,
+                course: session.course,
+                course_level: session.course_level,
+                address: session.address,
+                profile_picture: session.profile_picture
+            }
+        });
+    });
+});
+
 // Get user profile
 app.get('/api/user/:id', (req, res) => {
     const { id } = req.params;
 
-    const query = `SELECT id, id_number, last_name, first_name, middle_name, course_level, course, address, email, created_at FROM users WHERE id = ?`;
+    const query = `SELECT id, id_number, last_name, first_name, middle_name, course_level, course, address, email, profile_picture, created_at FROM users WHERE id = ?`;
 
     db.get(query, [id], (err, user) => {
         if (err) {
@@ -228,6 +320,45 @@ app.get('/api/user/:id', (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
         res.json(user);
+    });
+});
+
+// Upload profile picture
+app.post('/api/user/:id/profile-picture', upload.single('profilePicture'), (req, res) => {
+    const { id } = req.params;
+
+    if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const profilePicturePath = `/uploads/${req.file.filename}`;
+
+    // Get old profile picture to delete it
+    db.get(`SELECT profile_picture FROM users WHERE id = ?`, [id], (err, user) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to fetch user: ' + err.message });
+        }
+
+        // Update database with new profile picture path
+        const query = `UPDATE users SET profile_picture = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+        db.run(query, [profilePicturePath, id], function(err) {
+            if (err) {
+                return res.status(500).json({ error: 'Failed to update profile picture: ' + err.message });
+            }
+
+            // Delete old profile picture if exists
+            if (user && user.profile_picture) {
+                const oldPath = path.join(__dirname, user.profile_picture);
+                fs.unlink(oldPath, (unlinkErr) => {
+                    if (unlinkErr) console.error('Error deleting old profile picture:', unlinkErr.message);
+                });
+            }
+
+            res.json({ 
+                message: 'Profile picture uploaded successfully', 
+                profile_picture: profilePicturePath 
+            });
+        });
     });
 });
 
@@ -284,6 +415,189 @@ app.get('/api/sitin/records', (req, res) => {
             return res.status(500).json({ error: 'Failed to fetch records: ' + err.message });
         }
         res.json(records);
+    });
+});
+
+// Get sit-in records for a specific user
+app.get('/api/sitin/records/user/:user_id', (req, res) => {
+    const { user_id } = req.params;
+
+    const query = `
+        SELECT * FROM sit_in_records 
+        WHERE user_id = ? 
+        ORDER BY date DESC, time_in DESC
+    `;
+
+    db.all(query, [user_id], (err, records) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to fetch records: ' + err.message });
+        }
+        res.json({ records: records });
+    });
+});
+
+// Update user profile
+app.put('/api/user/:id', (req, res) => {
+    const { id } = req.params;
+    const { first_name, last_name, middle_name, email, course, course_level, address, current_password, new_password, remove_profile_picture } = req.body;
+
+    // First verify current password if trying to change password
+    if (new_password && current_password) {
+        const current_hash = hashPassword(current_password);
+        const verifyQuery = `SELECT password_hash FROM users WHERE id = ?`;
+
+        db.get(verifyQuery, [id], (err, user) => {
+            if (err) {
+                return res.status(500).json({ error: 'Verification failed: ' + err.message });
+            }
+            if (!user || user.password_hash !== current_hash) {
+                return res.status(401).json({ error: 'Current password is incorrect' });
+            }
+
+            // Update with new password
+            const new_hash = hashPassword(new_password);
+            updateProfile(id, first_name, last_name, middle_name, email, course, course_level, address, new_hash, remove_profile_picture, res);
+        });
+    } else {
+        // Update without changing password
+        updateProfile(id, first_name, last_name, middle_name, email, course, course_level, address, null, remove_profile_picture, res);
+    }
+});
+
+// Helper function to update profile
+function updateProfile(id, first_name, last_name, middle_name, email, course, course_level, address, password_hash, remove_profile_picture, res) {
+    let query, params;
+
+    if (remove_profile_picture) {
+        // Remove profile picture
+        if (password_hash) {
+            query = `
+                UPDATE users 
+                SET first_name = ?, last_name = ?, middle_name = ?, email = ?, course = ?, 
+                    course_level = ?, address = ?, password_hash = ?, profile_picture = NULL, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `;
+            params = [first_name, last_name, middle_name, email, course, course_level, address, password_hash, id];
+        } else {
+            query = `
+                UPDATE users 
+                SET first_name = ?, last_name = ?, middle_name = ?, email = ?, course = ?, 
+                    course_level = ?, address = ?, profile_picture = NULL, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            `;
+            params = [first_name, last_name, middle_name, email, course, course_level, address, id];
+        }
+    } else if (password_hash) {
+        query = `
+            UPDATE users 
+            SET first_name = ?, last_name = ?, middle_name = ?, email = ?, course = ?, 
+                course_level = ?, address = ?, password_hash = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        `;
+        params = [first_name, last_name, middle_name, email, course, course_level, address, password_hash, id];
+    } else {
+        query = `
+            UPDATE users 
+            SET first_name = ?, last_name = ?, middle_name = ?, email = ?, course = ?, 
+                course_level = ?, address = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        `;
+        params = [first_name, last_name, middle_name, email, course, course_level, address, id];
+    }
+
+    db.run(query, params, function(err) {
+        if (err) {
+            if (err.message.includes('UNIQUE constraint failed')) {
+                return res.status(409).json({ error: 'Email already in use' });
+            }
+            return res.status(500).json({ error: 'Failed to update profile: ' + err.message });
+        }
+        if (this.changes === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json({ message: 'Profile updated successfully' });
+    });
+}
+
+// =============================================
+// Notifications API
+// =============================================
+
+// Create notifications table if not exists
+db.run(`
+    CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        is_read BOOLEAN DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+`);
+
+// Get notifications for a user
+app.get('/api/notifications/:user_id', (req, res) => {
+    const { user_id } = req.params;
+
+    const query = `
+        SELECT id, title, message, is_read as read, created_at as time
+        FROM notifications 
+        WHERE user_id = ? 
+        ORDER BY created_at DESC
+    `;
+
+    db.all(query, [user_id], (err, notifications) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to fetch notifications: ' + err.message });
+        }
+        res.json(notifications);
+    });
+});
+
+// Mark notification as read
+app.put('/api/notifications/:id/read', (req, res) => {
+    const { id } = req.params;
+
+    const query = `UPDATE notifications SET is_read = 1 WHERE id = ?`;
+
+    db.run(query, [id], function(err) {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to update notification: ' + err.message });
+        }
+        res.json({ message: 'Notification marked as read' });
+    });
+});
+
+// Mark all notifications as read for a user
+app.put('/api/notifications/user/:user_id/read-all', (req, res) => {
+    const { user_id } = req.params;
+
+    const query = `UPDATE notifications SET is_read = 1 WHERE user_id = ?`;
+
+    db.run(query, [user_id], function(err) {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to update notifications: ' + err.message });
+        }
+        res.json({ message: 'All notifications marked as read' });
+    });
+});
+
+// Create a notification (for admin/system use)
+app.post('/api/notifications', (req, res) => {
+    const { user_id, title, message } = req.body;
+
+    if (!user_id || !title || !message) {
+        return res.status(400).json({ error: 'user_id, title, and message are required' });
+    }
+
+    const query = `INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)`;
+
+    db.run(query, [user_id, title, message], function(err) {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to create notification: ' + err.message });
+        }
+        res.status(201).json({ message: 'Notification created', id: this.lastID });
     });
 });
 

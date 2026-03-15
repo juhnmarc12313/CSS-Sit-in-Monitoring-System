@@ -25,7 +25,7 @@
 
       <div class="links">
         <a href="../index.html">Home</a>
-        <a href="">Community</a>
+        <a href="community.html">Community</a>
         <a href="aboutus.html">About</a>
         <a href="login.html">Login</a>
         <a href="Register.html">Register</a>
@@ -69,7 +69,7 @@
 
         // Validate required fields
         if (!id_number || !password) {
-          showMessage("Please enter both ID Number and password.", "danger");
+          alert("Please enter both ID Number and password.", "danger");
           return;
         }
 
@@ -88,13 +88,12 @@
           const data = await response.json();
 
           if (response.ok) {
-            showMessage("Login successful! Redirecting...", "success");
-            // Store user data in localStorage
-            localStorage.setItem("user", JSON.stringify(data.user));
+            alert("Login successful! Redirecting...", "success");
+            // Store only session token in localStorage
             localStorage.setItem("session_token", data.session_token);
 
             setTimeout(() => {
-              window.location.href = "../index.html";
+              window.location.href = "dashboard.html";
             }, 1500);
           } else {
             showMessage(data.error || "Login failed", "danger");
