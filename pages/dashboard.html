@@ -1,745 +1,792 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="/public/dashboard.css" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-    />
-    <title>Student Dashboard - CCS Sit-in Monitoring System</title>
-  </head>
-  <body>
-    <!-- Student Navigation Bar -->
-    <div class="nav" id="studentNav">
-      <div class="logo">
-        <img
-          src="/image/ccslogo1.png"
-          class="img"
-          alt="uclogo"
-          height="60px"
-          width="60px"
-        />
-        <p class="title">CCS Sit-in Monitoring System</p>
-      </div>
 
-      <div class="nav-links">
-        <a href="../index.html" class="nav-link">
-          <i class="fas fa-home"></i> Home
-        </a>
-        <a href="#" class="nav-link active" onclick="showSection('dashboard')">
-          <i class="fas fa-tachometer-alt"></i> Dashboard
-        </a>
-        <a href="#" class="nav-link" onclick="showSection('reservation')">
-          <i class="fas fa-calendar-alt"></i> Reservation
-        </a>
-        <a href="#" class="nav-link" onclick="showSection('notifications')">
-          <i class="fas fa-bell"></i> Notification
-        </a>
-        <a href="#" class="nav-link" onclick="showSection('editProfile')">
-          <i class="fas fa-user-edit"></i> Edit Profile
-        </a>
-        <a href="#" class="nav-link" onclick="showSection('history')">
-          <i class="fas fa-history"></i> History
-        </a>
-      </div>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/public/dashboard.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <title>Student Dashboard - CCS Sit-in Monitoring System</title>
+</head>
 
-      <div class="nav-right">
-        <div class="notification-bell" onclick="toggleNotifications()">
-          <i class="fas fa-bell"></i>
-          <span class="notification-count" id="notificationCount">0</span>
-        </div>
-        <div class="user-menu">
-          <span class="welcome-user">Welcome, <span id="userName">Student</span></span>
-        </div>
-        <button class="logout-btn" onclick="handleLogout()">
-          <i class="fas fa-sign-out-alt"></i> Logout
-        </button>
-      </div>
+<body>
+  <!-- Student Navigation Bar -->
+  <div class="nav" id="studentNav">
+    <div class="logo">
+      <img src="/image/ccslogo1.png" class="img" alt="uclogo" height="60px" width="60px" />
+      <p class="title">CCS Sit-in Monitoring System</p>
     </div>
 
-    <!-- Admin Navigation Bar -->
-    <div class="nav" id="adminNav" style="display: none;">
-      <div class="logo">
-        <img
-          src="/image/ccslogo1.png"
-          class="img"
-          alt="uclogo"
-          height="60px"
-          width="60px"
-        />
-        <p class="title">CCS Sit-in Monitoring System</p>
-      </div>
+    <div class="nav-links">
+      <a href="../index.html" class="nav-link">
+        <i class="fas fa-home"></i> Home
+      </a>
+      <a href="#" class="nav-link active" onclick="showSection('dashboard')">
+        <i class="fas fa-tachometer-alt"></i> Dashboard
+      </a>
+      <a href="#" class="nav-link" onclick="showSection('reservation')">
+        <i class="fas fa-calendar-alt"></i> Reservation
+      </a>
+      <a href="#" class="nav-link" onclick="showSection('notifications')">
+        <i class="fas fa-bell"></i> Notification
+      </a>
+      <a href="#" class="nav-link" onclick="showSection('editProfile')">
+        <i class="fas fa-user-edit"></i> Edit Profile
+      </a>
+      <a href="#" class="nav-link" onclick="showSection('history')">
+        <i class="fas fa-history"></i> History
+      </a>
+    </div>
 
-      <div class="nav-links">
-        <a href="../index.html" class="nav-link">
-          <i class="fas fa-home"></i> Home
-        </a>
-        <a href="#" class="nav-link active" onclick="showSection('adminDashboard')">
-          <i class="fas fa-tachometer-alt"></i> Dashboard
-        </a>
-        <a href="#" class="nav-link" onclick="openSearchModal()">
+    <div class="nav-right">
+      <div class="notification-bell" onclick="toggleNotifications()">
+        <i class="fas fa-bell"></i>
+        <span class="notification-count" id="notificationCount">0</span>
+      </div>
+      <div class="user-menu">
+        <span class="welcome-user">Welcome, <span id="userName">Student</span></span>
+      </div>
+      <button class="logout-btn" onclick="handleLogout()">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </button>
+    </div>
+  </div>
+
+  <!-- Admin Navigation Bar -->
+  <div class="nav" id="adminNav" style="display: none;">
+    <div class="logo">
+      <img src="/image/ccslogo1.png" class="img" alt="uclogo" height="60px" width="60px" />
+      <p class="title">CCS Sit-in Monitoring System</p>
+    </div>
+
+    <div class="nav-links">
+      <a href="../index.html" class="nav-link">
+        <i class="fas fa-home"></i> Home
+      </a>
+      <a href="#" class="nav-link active" onclick="showSection('adminDashboard')">
+        <i class="fas fa-tachometer-alt"></i> Dashboard
+      </a>
+      <a href="#" class="nav-link" onclick="openSearchModal()">
+        <i class="fas fa-search"></i> Search
+      </a>
+      <a href="#" class="nav-link" onclick="showSection('student')">
+        <i class="fas fa-user-graduate"></i> Student
+      </a>
+      <a href="#" class="nav-link" onclick="showSection('sitIn')">
+        <i class="fas fa-laptop"></i> Sit-in
+      </a>
+      <a href="#" class="nav-link" onclick="showSection('viewRecords')">
+        <i class="fas fa-clipboard-list"></i> View Sit-in Records
+      </a>
+      <a href="#" class="nav-link" onclick="showSection('feedbacks')">
+        <i class="fas fa-comments"></i> Feedbacks Reports
+      </a>
+      <a href="#" class="nav-link" onclick="showSection('reservation')">
+        <i class="fas fa-calendar-alt"></i> Reservation
+      </a>
+    </div>
+
+    <div class="nav-right">
+      <div class="user-menu">
+        <span class="welcome-user">Welcome, <span id="adminUserName">Admin</span></span>
+      </div>
+      <button class="logout-btn" onclick="handleLogout()">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </button>
+    </div>
+  </div>
+
+  <!-- Notification Panel -->
+  <div class="notification-panel" id="notificationPanel">
+    <div class="notification-header">
+      <h3>Notifications</h3>
+      <button onclick="markAllRead()">Mark all as read</button>
+    </div>
+    <div class="notification-list" id="notificationList">
+      <!-- Notifications will be loaded here -->
+    </div>
+  </div>
+
+  <!-- Search Modal -->
+  <div id="searchModal" class="modal hidden">
+    <div class="modal-content animate__animated animate__fadeInUp">
+      <span class="modal-close" onclick="closeSearchModal()">&times;</span>
+      <h2><i class="fas fa-search"></i> Search Student</h2>
+      <div class="search-modal-form">
+        <input type="text" id="modalSearchInput" placeholder="Enter Student ID Number or Name..." />
+        <button class="btn-primary" onclick="modalSearchStudent()">
           <i class="fas fa-search"></i> Search
-        </a>
-        <a href="#" class="nav-link" onclick="showSection('student')">
-          <i class="fas fa-user-graduate"></i> Student
-        </a>
-        <a href="#" class="nav-link" onclick="showSection('sitIn')">
-          <i class="fas fa-laptop"></i> Sit-in
-        </a>
-        <a href="#" class="nav-link" onclick="showSection('viewRecords')">
-          <i class="fas fa-clipboard-list"></i> View Sit-in Records
-        </a>
-        <a href="#" class="nav-link" onclick="showSection('feedbacks')">
-          <i class="fas fa-comments"></i> Feedbacks Reports
-        </a>
-        <a href="#" class="nav-link" onclick="showSection('reservation')">
-          <i class="fas fa-calendar-alt"></i> Reservation
-        </a>
-      </div>
-
-      <div class="nav-right">
-        <div class="user-menu">
-          <span class="welcome-user">Welcome, <span id="adminUserName">Admin</span></span>
-        </div>
-        <button class="logout-btn" onclick="handleLogout()">
-          <i class="fas fa-sign-out-alt"></i> Logout
         </button>
       </div>
+      <div id="modalSearchResults" class="modal-search-results"></div>
     </div>
+  </div>
 
-    <!-- Notification Panel -->
-    <div class="notification-panel" id="notificationPanel">
-      <div class="notification-header">
-        <h3>Notifications</h3>
-        <button onclick="markAllRead()">Mark all as read</button>
-      </div>
-      <div class="notification-list" id="notificationList">
-        <!-- Notifications will be loaded here -->
-      </div>
-    </div>
-
-    <!-- Search Modal -->
-    <div id="searchModal" class="modal hidden">
-      <div class="modal-content animate__animated animate__fadeInUp">
-        <span class="modal-close" onclick="closeSearchModal()">&times;</span>
-        <h2><i class="fas fa-search"></i> Search Student</h2>
-        <div class="search-modal-form">
-          <input type="text" id="modalSearchInput" placeholder="Enter Student ID Number or Name..." />
-          <button class="btn-primary" onclick="modalSearchStudent()">
-            <i class="fas fa-search"></i> Search
+  <!-- Add Student Modal -->
+  <div id="addStudentModal" class="modal hidden">
+    <div class="modal-content animate__animated animate__fadeInUp" style="max-width: 550px;">
+      <span class="modal-close" onclick="closeAddStudentModal()">&times;</span>
+      <h2><i class="fas fa-user-plus"></i> Add New Student</h2>
+      <form id="addStudentForm" onsubmit="submitAddStudent(event)">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="newStudentId">ID Number</label>
+            <input type="text" id="newStudentId" required placeholder="e.g., 23-12345" />
+          </div>
+          <div class="form-group">
+            <label for="newStudentEmail">Email</label>
+            <input type="email" id="newStudentEmail" required placeholder="student@uc.ccs" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="newStudentFirstName">First Name</label>
+            <input type="text" id="newStudentFirstName" required />
+          </div>
+          <div class="form-group">
+            <label for="newStudentLastName">Last Name</label>
+            <input type="text" id="newStudentLastName" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="newStudentMiddleName">Middle Name (Optional)</label>
+          <input type="text" id="newStudentMiddleName" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="newStudentCourse">Course</label>
+            <select id="newStudentCourse" required>
+              <option value="">Select Course</option>
+              <option value="BSCS">BS Computer Science</option>
+              <option value="BSIT">BS Information Technology</option>
+              <option value="BSIS">BS Information Systems</option>
+              <option value="ACT">Associate in Computer Technology</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="newStudentYear">Year Level</label>
+            <select id="newStudentYear" required>
+              <option value="">Select Year</option>
+              <option value="1">1st Year</option>
+              <option value="2">2nd Year</option>
+              <option value="3">3rd Year</option>
+              <option value="4">4th Year</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="newStudentAddress">Address (Optional)</label>
+          <input type="text" id="newStudentAddress" placeholder="Cebu City, Philippines" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="newStudentPassword">Password</label>
+            <input type="password" id="newStudentPassword" required placeholder="Default: student123" />
+          </div>
+          <div class="form-group">
+            <label for="newStudentSessions">Remaining Sessions</label>
+            <input type="number" id="newStudentSessions" required min="0" value="30" placeholder="Default: 30" />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" onclick="closeAddStudentModal()">Cancel</button>
+          <button type="submit" class="btn-primary">
+            <i class="fas fa-save"></i> Add Student
           </button>
         </div>
-        <div id="modalSearchResults" class="modal-search-results"></div>
-      </div>
+      </form>
     </div>
+  </div>
 
-    <!-- Add Student Modal -->
-    <div id="addStudentModal" class="modal hidden">
-      <div class="modal-content animate__animated animate__fadeInUp" style="max-width: 550px;">
-        <span class="modal-close" onclick="closeAddStudentModal()">&times;</span>
-        <h2><i class="fas fa-user-plus"></i> Add New Student</h2>
-        <form id="addStudentForm" onsubmit="submitAddStudent(event)">
-          <div class="form-row">
-            <div class="form-group">
-              <label for="newStudentId">ID Number</label>
-              <input type="text" id="newStudentId" required placeholder="e.g., 23-12345" />
-            </div>
-            <div class="form-group">
-              <label for="newStudentEmail">Email</label>
-              <input type="email" id="newStudentEmail" required placeholder="student@uc.ccs" />
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="newStudentFirstName">First Name</label>
-              <input type="text" id="newStudentFirstName" required />
-            </div>
-            <div class="form-group">
-              <label for="newStudentLastName">Last Name</label>
-              <input type="text" id="newStudentLastName" required />
-            </div>
-          </div>
-          <div class="form-group">
-            <label for="newStudentMiddleName">Middle Name (Optional)</label>
-            <input type="text" id="newStudentMiddleName" />
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="newStudentCourse">Course</label>
-              <select id="newStudentCourse" required>
-                <option value="">Select Course</option>
-                <option value="BSCS">BS Computer Science</option>
-                <option value="BSIT">BS Information Technology</option>
-                <option value="BSIS">BS Information Systems</option>
-                <option value="ACT">Associate in Computer Technology</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="newStudentYear">Year Level</label>
-              <select id="newStudentYear" required>
-                <option value="">Select Year</option>
-                <option value="1">1st Year</option>
-                <option value="2">2nd Year</option>
-                <option value="3">3rd Year</option>
-                <option value="4">4th Year</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-group">
-            <label for="newStudentAddress">Address (Optional)</label>
-            <input type="text" id="newStudentAddress" placeholder="Cebu City, Philippines" />
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="newStudentPassword">Password</label>
-              <input type="password" id="newStudentPassword" required placeholder="Default: student123" />
-            </div>
-            <div class="form-group">
-              <label for="newStudentSessions">Remaining Sessions</label>
-              <input type="number" id="newStudentSessions" required min="0" value="30" placeholder="Default: 30" />
-            </div>
-          </div>
-          <div class="form-actions">
-            <button type="button" class="btn-secondary" onclick="closeAddStudentModal()">Cancel</button>
-            <button type="submit" class="btn-primary">
-              <i class="fas fa-save"></i> Add Student
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+  <!-- Main Dashboard Content -->
+  <div class="dashboard-main">
+    <!-- Content Area -->
+    <main class="content-area">
+      <!-- Dashboard Section -->
+      <section class="content-section" id="dashboardSection">
+        <h2 class="section-title animate__animated animate__fadeInUp">Dashboard Overview</h2>
 
-    <!-- Main Dashboard Content -->
-    <div class="dashboard-main">
-      <!-- Content Area -->
-      <main class="content-area">
-        <!-- Dashboard Section -->
-        <section class="content-section" id="dashboardSection">
-          <h2 class="section-title animate__animated animate__fadeInUp">Dashboard Overview</h2>
-          
-          <div class="dashboard-grid">
-            <!-- Student Information Card -->
-            <div class="info-card animate__animated animate__fadeInUp">
-              <div class="info-card-header">
-                <h3><i class="fas fa-user"></i> Student Information</h3>
-              </div>
-              <div class="info-card-body">
-                <div class="profile-picture-container">
-                  <div class="profile-picture-large" id="dashboardProfilePic">
-                    <img src="image/makoy.jpg" alt="Profile" id="profilePictureDisplay" style="display: none;" />
-                    <i class="fas fa-user-circle" id="defaultAvatarIcon"></i>
-                  </div>
-                </div>
-                <div class="info-fields">
-                  <div class="info-field">
-                    <label>Name:</label>
-                    <span id="infoName">Student Name</span>
-                  </div>
-                  <div class="info-field">
-                    <label>Course:</label>
-                    <span id="infoCourse">Course</span>
-                  </div>
-                  <div class="info-field">
-                    <label>Year:</label>
-                    <span id="infoYear">1st Year</span>
-                  </div>
-                  <div class="info-field">
-                    <label>Address:</label>
-                    <span id="infoAddress">Address</span>
-                  </div>
-                  <div class="info-field">
-                    <label>Sessions Remaining:</label>
-                    <span id="infoSessionsRemaining">30</span>
-                  </div>
-                </div>
-              </div>
+        <div class="dashboard-grid">
+          <!-- Student Information Card -->
+          <div class="info-card animate__animated animate__fadeInUp">
+            <div class="info-card-header">
+              <h3><i class="fas fa-user"></i> Student Information</h3>
             </div>
-
-            <!-- Announcements Card -->
-            <div class="info-card animate__animated animate__fadeInUp">
-              <div class="info-card-header announcements-header">
-                <h3><i class="fas fa-bullhorn"></i> Announcements</h3>
-              </div>
-              <div class="info-card-body announcements-body">
-                <div class="announcement-list" id="announcementList">
-                  <!-- Announcements will be loaded here -->
+            <div class="info-card-body">
+              <div class="profile-picture-container">
+                <div class="profile-picture-large" id="dashboardProfilePic">
+                  <img src="image/makoy.jpg" alt="Profile" id="profilePictureDisplay" style="display: none;" />
+                  <i class="fas fa-user-circle" id="defaultAvatarIcon"></i>
                 </div>
               </div>
-            </div>
-
-            <!-- Rules and Regulations Card -->
-            <div class="info-card animate__animated animate__fadeInUp">
-              <div class="info-card-header rules-header">
-                <h3><i class="fas fa-book"></i> Rules and Regulations</h3>
-              </div>
-              <div class="info-card-body rules-body">
-                <div class="rules-header">
-                  <h4>University of Cebu</h4>
-                  <h5>COLLEGE OF INFORMATION & COMPUTER STUDIES</h5>
-                  <h6>LABORATORY RULES AND REGULATIONS</h6>
-                  <p class="rules-intro">To avoid embarassment and maintain camaraderie with your friends and superior at our laboratories please observe the following:</p>
+              <div class="info-fields">
+                <div class="info-field">
+                  <label>Name:</label>
+                  <span id="infoName">Student Name</span>
                 </div>
-                <div class="rules-list">
-                  <div class="rule-item">
-                    <span class="rule-number">1.</span>
-                    <span class="rule-text">Maintain silence, proper decorum and discipline inside the laboratory. Mobile phones and other personal pieces of equipment must be switched off.</span>
-                  </div>
-                  <div class="rule-item">
-                    <span class="rule-number">2.</span>
-                    <span class="rule-text">Games are not allowed inside the lab. This includes computer-related games, card games and other games that may disturb the operation of the lab.</span>
-                  </div>
-                  <div class="rule-item">
-                    <span class="rule-number">3.</span>
-                    <span class="rule-text">Surfing the Internet is allowed only with the permission of the instructor. Downloading and installing of the software strictly prohibited.</span>
-                  </div>
+                <div class="info-field">
+                  <label>Course:</label>
+                  <span id="infoCourse">Course</span>
+                </div>
+                <div class="info-field">
+                  <label>Year:</label>
+                  <span id="infoYear">1st Year</span>
+                </div>
+                <div class="info-field">
+                  <label>Address:</label>
+                  <span id="infoAddress">Address</span>
+                </div>
+                <div class="info-field">
+                  <label>Sessions Remaining:</label>
+                  <span id="infoSessionsRemaining">30</span>
                 </div>
               </div>
             </div>
           </div>
-        </section>
 
-        <!-- Edit Profile Section -->
-        <section class="content-section hidden" id="editProfileSection">
-          <h2 class="section-title animate__animated animate__fadeInUp">
-            <i class="fas fa-user-edit"></i> Edit Profile
-          </h2>
-          
-          <div class="edit-profile-container animate__animated animate__fadeInUp">
-            <!-- Profile Picture Section -->
-            <div class="profile-picture-section">
-              <div class="profile-picture-preview" id="profilePicturePreview">
-                <img src="" alt="Profile" id="editProfilePicture" style="display: none;" />
-                <i class="fas fa-user-circle" id="editDefaultAvatar"></i>
-              </div>
-              <div class="profile-picture-actions">
-                <input type="file" id="profilePictureInput" accept="image/*" style="display: none;" onchange="handleProfilePictureChange(event)" />
-                <button type="button" class="btn-primary" onclick="document.getElementById('profilePictureInput').click()">
-                  <i class="fas fa-camera"></i> Change Photo
-                </button>
-                <button type="button" class="btn-secondary" onclick="removeProfilePicture()" id="removePhotoBtn" style="display: none;">
-                  <i class="fas fa-trash"></i> Remove
-                </button>
-                <p class="photo-hint">Max file size: 5MB. Formats: JPG, PNG, GIF</p>
+          <!-- Announcements Card -->
+          <div class="info-card animate__animated animate__fadeInUp">
+            <div class="info-card-header announcements-header">
+              <h3><i class="fas fa-bullhorn"></i> Announcements</h3>
+            </div>
+            <div class="info-card-body announcements-body">
+              <div class="announcement-list" id="announcementList">
+                <!-- Announcements will be loaded here -->
               </div>
             </div>
-            
-            <form id="editProfileForm">
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="editFirstName">First Name</label>
-                  <input type="text" id="editFirstName" name="first_name" required />
-                </div>
-                <div class="form-group">
-                  <label for="editLastName">Last Name</label>
-                  <input type="text" id="editLastName" name="last_name" required />
-                </div>
-              </div>
-              
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="editMiddleName">Middle Name</label>
-                  <input type="text" id="editMiddleName" name="middle_name" />
-                </div>
-                <div class="form-group">
-                  <label for="editEmail">Email</label>
-                  <input type="email" id="editEmail" name="email" required />
-                </div>
-              </div>
-              
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="editCourse">Course</label>
-                  <select id="editCourse" name="course" required>
-                    <option value="">Select Course</option>
-                    <option value="BSIT">BSIT</option>
-                    <option value="BSCS">BSCS</option>
-                    <option value="BSIS">BSIS</option>
-                    <option value="BSCpE">BSCpE</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="editCourseLevel">Course Level</label>
-                  <select id="editCourseLevel" name="course_level" required>
-                    <option value="">Select Level</option>
-                    <option value="1">1st Year</option>
-                    <option value="2">2nd Year</option>
-                    <option value="3">3rd Year</option>
-                    <option value="4">4th Year</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div class="form-group full-width">
-                <label for="editAddress">Address</label>
-                <input type="text" id="editAddress" name="address" />
-              </div>
-              
-              <div class="form-divider">
-                <span>Change Password (leave blank to keep current)</span>
-              </div>
-              
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="currentPassword">Current Password</label>
-                  <input type="password" id="currentPassword" name="current_password" />
-                </div>
-                <div class="form-group">
-                  <label for="newPassword">New Password</label>
-                  <input type="password" id="newPassword" name="new_password" />
-                </div>
-              </div>
-              
-              <div class="form-actions">
-                <button type="submit" class="btn-primary">
-                  <i class="fas fa-save"></i> Save Changes
-                </button>
-                <button type="button" class="btn-secondary" onclick="resetForm()">
-                  <i class="fas fa-undo"></i> Reset
-                </button>
-              </div>
-              
-              <div id="profileMessage" class="message-container"></div>
-            </form>
           </div>
-        </section>
 
-        <!-- History Section -->
-        <section class="content-section hidden" id="historySection">
-          <h2 class="section-title animate__animated animate__fadeInUp">
-            <i class="fas fa-history"></i> Sit-in History
-          </h2>
-          
-          <div class="history-container animate__animated animate__fadeInUp">
-            <div class="history-filters">
-              <div class="filter-group">
-                <label for="filterMonth">Month:</label>
-                <input type="month" id="filterMonth" onchange="filterHistory()" />
+          <!-- Rules and Regulations Card -->
+          <div class="info-card animate__animated animate__fadeInUp">
+            <div class="info-card-header rules-header">
+              <h3><i class="fas fa-book"></i> Rules and Regulations</h3>
+            </div>
+            <div class="info-card-body rules-body">
+              <div class="rules-header">
+                <h4>University of Cebu</h4>
+                <h5>COLLEGE OF INFORMATION & COMPUTER STUDIES</h5>
+                <h6>LABORATORY RULES AND REGULATIONS</h6>
+                <p class="rules-intro">To avoid embarassment and maintain camaraderie with your friends and superior at
+                  our laboratories please observe the following:</p>
               </div>
-              <div class="filter-group">
-                <label for="filterLab">Lab Room:</label>
-                <select id="filterLab" onchange="filterHistory()">
-                  <option value="">All Labs</option>
-                  <option value="Lab 1">Lab 1</option>
-                  <option value="Lab 2">Lab 2</option>
-                  <option value="Lab 3">Lab 3</option>
-                  <option value="Lab 4">Lab 4</option>
-                  <option value="Lab 5">Lab 5</option>
+              <div class="rules-list">
+                <div class="rule-item">
+                  <span class="rule-number">1.</span>
+                  <span class="rule-text">Maintain silence, proper decorum and discipline inside the laboratory. Mobile
+                    phones and other personal pieces of equipment must be switched off.</span>
+                </div>
+                <div class="rule-item">
+                  <span class="rule-number">2.</span>
+                  <span class="rule-text">Games are not allowed inside the lab. This includes computer-related games,
+                    card games and other games that may disturb the operation of the lab.</span>
+                </div>
+                <div class="rule-item">
+                  <span class="rule-number">3.</span>
+                  <span class="rule-text">Surfing the Internet is allowed only with the permission of the instructor.
+                    Downloading and installing of the software strictly prohibited.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Edit Profile Section -->
+      <section class="content-section hidden" id="editProfileSection">
+        <h2 class="section-title animate__animated animate__fadeInUp">
+          <i class="fas fa-user-edit"></i> Edit Profile
+        </h2>
+
+        <div class="edit-profile-container animate__animated animate__fadeInUp">
+          <!-- Profile Picture Section -->
+          <div class="profile-picture-section">
+            <div class="profile-picture-preview" id="profilePicturePreview">
+              <img src="" alt="Profile" id="editProfilePicture" style="display: none;" />
+              <i class="fas fa-user-circle" id="editDefaultAvatar"></i>
+            </div>
+            <div class="profile-picture-actions">
+              <input type="file" id="profilePictureInput" accept="image/*" style="display: none;"
+                onchange="handleProfilePictureChange(event)" />
+              <button type="button" class="btn-primary"
+                onclick="document.getElementById('profilePictureInput').click()">
+                <i class="fas fa-camera"></i> Change Photo
+              </button>
+              <button type="button" class="btn-secondary" onclick="removeProfilePicture()" id="removePhotoBtn"
+                style="display: none;">
+                <i class="fas fa-trash"></i> Remove
+              </button>
+              <p class="photo-hint">Max file size: 5MB. Formats: JPG, PNG, GIF</p>
+            </div>
+          </div>
+
+          <form id="editProfileForm">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="editFirstName">First Name</label>
+                <input type="text" id="editFirstName" name="first_name" required />
+              </div>
+              <div class="form-group">
+                <label for="editLastName">Last Name</label>
+                <input type="text" id="editLastName" name="last_name" required />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="editMiddleName">Middle Name</label>
+                <input type="text" id="editMiddleName" name="middle_name" />
+              </div>
+              <div class="form-group">
+                <label for="editEmail">Email</label>
+                <input type="email" id="editEmail" name="email" required />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="editCourse">Course</label>
+                <select id="editCourse" name="course" required>
+                  <option value="">Select Course</option>
+                  <option value="BSIT">BSIT</option>
+                  <option value="BSCS">BSCS</option>
+                  <option value="BSIS">BSIS</option>
+                  <option value="BSCpE">BSCpE</option>
                 </select>
               </div>
-              <button class="btn-secondary" onclick="clearFilters()">
-                <i class="fas fa-times"></i> Clear Filters
+              <div class="form-group">
+                <label for="editCourseLevel">Course Level</label>
+                <select id="editCourseLevel" name="course_level" required>
+                  <option value="">Select Level</option>
+                  <option value="1">1st Year</option>
+                  <option value="2">2nd Year</option>
+                  <option value="3">3rd Year</option>
+                  <option value="4">4th Year</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group full-width">
+              <label for="editAddress">Address</label>
+              <input type="text" id="editAddress" name="address" />
+            </div>
+
+            <div class="form-divider">
+              <span>Change Password (leave blank to keep current)</span>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="currentPassword">Current Password</label>
+                <input type="password" id="currentPassword" name="current_password" />
+              </div>
+              <div class="form-group">
+                <label for="newPassword">New Password</label>
+                <input type="password" id="newPassword" name="new_password" />
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">
+                <i class="fas fa-save"></i> Save Changes
+              </button>
+              <button type="button" class="btn-secondary" onclick="resetForm()">
+                <i class="fas fa-undo"></i> Reset
               </button>
             </div>
-            
-            <div class="table-container">
-              <table id="fullHistoryTable">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Lab Room</th>
-                    <th>Purpose</th>
-                    <th>Time In</th>
-                    <th>Time Out</th>
-                    <th>Duration</th>
-                  </tr>
-                </thead>
-                <tbody id="fullHistoryTableBody">
-                  <!-- Full history data will be loaded here -->
-                </tbody>
-              </table>
-              <p id="noFullHistoryMessage" class="no-data-message">No sit-in records found.</p>
+
+            <div id="profileMessage" class="message-container"></div>
+          </form>
+        </div>
+      </section>
+
+      <!-- History Section -->
+      <section class="content-section hidden" id="historySection">
+        <h2 class="section-title animate__animated animate__fadeInUp">
+          <i class="fas fa-history"></i> Sit-in History
+        </h2>
+
+        <div class="history-container animate__animated animate__fadeInUp">
+          <div class="history-filters">
+            <div class="filter-group">
+              <label for="filterMonth">Month:</label>
+              <input type="month" id="filterMonth" onchange="filterHistory()" />
+            </div>
+            <div class="filter-group">
+              <label for="filterLab">Lab Room:</label>
+              <select id="filterLab" onchange="filterHistory()">
+                <option value="">All Labs</option>
+                <option value="Lab 1">Lab 1</option>
+                <option value="Lab 2">Lab 2</option>
+                <option value="Lab 3">Lab 3</option>
+                <option value="Lab 4">Lab 4</option>
+                <option value="Lab 5">Lab 5</option>
+              </select>
+            </div>
+            <button class="btn-secondary" onclick="clearFilters()">
+              <i class="fas fa-times"></i> Clear Filters
+            </button>
+          </div>
+
+          <div class="table-container">
+            <table id="fullHistoryTable">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Lab Room</th>
+                  <th>Purpose</th>
+                  <th>Time In</th>
+                  <th>Time Out</th>
+                  <th>Duration</th>
+                </tr>
+              </thead>
+              <tbody id="fullHistoryTableBody">
+                <!-- Full history data will be loaded here -->
+              </tbody>
+            </table>
+            <p id="noFullHistoryMessage" class="no-data-message">No sit-in records found.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Reservation Section -->
+      <section class="content-section hidden" id="reservationSection">
+        <h2 class="section-title animate__animated animate__fadeInUp">
+          <i class="fas fa-calendar-alt"></i> Reservation
+        </h2>
+
+        <div class="reservation-container animate__animated animate__fadeInUp">
+          <div class="reservation-form-card">
+            <h3>Reserve a Laboratory Session</h3>
+            <form id="reservationForm">
+              <div class="form-group">
+                <label for="resLabRoom">Laboratory Room</label>
+                <select id="resLabRoom" required>
+                  <option value="">Select Laboratory</option>
+                  <option value="Lab 1">Laboratory 524</option>
+                  <option value="Lab 2">Laboratory 526</option>
+                  <option value="Lab 3">Laboratory 528</option>
+                  <option value="Lab 4">Laboratory 530</option>
+                  <option value="Lab 5">Laboratory 544</option>
+                  <option value="Lab 5">Laboratory 542</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="resDate">Date</label>
+                <input type="date" id="resDate" required />
+              </div>
+
+              <div class="form-group">
+                <label for="resTime">Time</label>
+                <input type="time" id="resTime" required />
+              </div>
+
+              <div class="form-group">
+                <label for="resPurpose">Purpose</label>
+                <select id="resPurpose" required>
+                  <option value="">Select Purpose</option>
+                  <option value="Coding">Coding/Programming</option>
+                  <option value="Research">Research</option>
+                  <option value="Assignment">Assignment</option>
+                  <option value="Project">Project Development</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div class="form-actions">
+                <button type="submit" class="btn-primary">
+                  <i class="fas fa-save"></i> Reserve
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="reservation-info-card">
+            <h3>Reservation Guidelines</h3>
+            <ul>
+              <li>Reservations must be made at least 1 day in advance.</li>
+              <li>Each student is allowed 1 reservation per day.</li>
+              <li>Cancellation must be done at least 2 hours before the scheduled time.</li>
+              <li>Please arrive on time. Your slot will be given to others after 15 minutes.</li>
+              <li>Maximum of 3 hours per session.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Notifications Section -->
+      <section class="content-section hidden" id="notificationsSection">
+        <h2 class="section-title animate__animated animate__fadeInUp">
+          <i class="fas fa-bell"></i> All Notifications
+        </h2>
+
+        <div class="notifications-container animate__animated animate__fadeInUp">
+          <div class="notifications-actions">
+            <button class="btn-primary" onclick="markAllRead()">
+              <i class="fas fa-check-double"></i> Mark All as Read
+            </button>
+            <button class="btn-secondary" onclick="clearAllNotifications()">
+              <i class="fas fa-trash"></i> Clear All
+            </button>
+          </div>
+          <div class="notifications-list-full" id="notificationsListFull">
+            <!-- All notifications will be loaded here -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Admin Dashboard Section -->
+      <section class="content-section hidden" id="adminDashboardSection">
+        <h2 class="section-title animate__animated animate__fadeInUp">
+          <i class="fas fa-tachometer-alt"></i> Admin Dashboard
+        </h2>
+
+        <div class="admin-dashboard-container">
+          <!-- Statistics Panel (Left) -->
+          <div class="statistics-panel animate__animated animate__fadeInUp">
+            <h3><i class="fas fa-chart-bar"></i> Statistics</h3>
+            <div class="statistics-grid">
+              <div class="stat-card">
+                <div class="stat-icon">
+                  <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-info">
+                  <p class="stat-number" id="totalStudents">0</p>
+                  <p class="stat-label">Total Students</p>
+                </div>
+              </div>
+
+              <div class="stat-card">
+                <div class="stat-icon">
+                  <i class="fas fa-laptop"></i>
+                </div>
+                <div class="stat-info">
+                  <p class="stat-number" id="activeSitins">0</p>
+                  <p class="stat-label">Active Sit-ins</p>
+                </div>
+              </div>
+
+              <div class="stat-card">
+                <div class="stat-icon">
+                  <i class="fas fa-calendar-check"></i>
+                </div>
+                <div class="stat-info">
+                  <p class="stat-number" id="todayReservations">0</p>
+                  <p class="stat-label">Today's Reservations</p>
+                </div>
+              </div>
+
+              <div class="stat-card">
+                <div class="stat-icon">
+                  <i class="fas fa-comments"></i>
+                </div>
+                <div class="stat-info">
+                  <p class="stat-number" id="totalFeedbacks">0</p>
+                  <p class="stat-label">Total Feedbacks</p>
+                </div>
+              </div>
             </div>
           </div>
-        </section>
 
-        <!-- Reservation Section -->
-        <section class="content-section hidden" id="reservationSection">
-          <h2 class="section-title animate__animated animate__fadeInUp">
-            <i class="fas fa-calendar-alt"></i> Reservation
-          </h2>
-          
-          <div class="reservation-container animate__animated animate__fadeInUp">
-            <div class="reservation-form-card">
-              <h3>Reserve a Laboratory Session</h3>
-              <form id="reservationForm">
-                <div class="form-group">
-                  <label for="resLabRoom">Laboratory Room</label>
-                  <select id="resLabRoom" required>
-                    <option value="">Select Laboratory</option>
-                    <option value="Lab 1">Laboratory 524</option>
-                    <option value="Lab 2">Laboratory 526</option>
-                    <option value="Lab 3">Laboratory 528</option>
-                    <option value="Lab 4">Laboratory 530</option>
-                    <option value="Lab 5">Laboratory 544</option>
-                    <option value="Lab 5">Laboratory 542</option>
-                  </select>
-                </div>
-                
-                <div class="form-group">
-                  <label for="resDate">Date</label>
-                  <input type="date" id="resDate" required />
-                </div>
-                
-                <div class="form-group">
-                  <label for="resTime">Time</label>
-                  <input type="time" id="resTime" required />
-                </div>
-                
-                <div class="form-group">
-                  <label for="resPurpose">Purpose</label>
-                  <select id="resPurpose" required>
-                    <option value="">Select Purpose</option>
-                    <option value="Coding">Coding/Programming</option>
-                    <option value="Research">Research</option>
-                    <option value="Assignment">Assignment</option>
-                    <option value="Project">Project Development</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                
-                <div class="form-actions">
-                  <button type="submit" class="btn-primary">
-                    <i class="fas fa-save"></i> Reserve
-                  </button>
-                </div>
-              </form>
-            </div>
-            
-            <div class="reservation-info-card">
-              <h3>Reservation Guidelines</h3>
-              <ul>
-                <li>Reservations must be made at least 1 day in advance.</li>
-                <li>Each student is allowed 1 reservation per day.</li>
-                <li>Cancellation must be done at least 2 hours before the scheduled time.</li>
-                <li>Please arrive on time. Your slot will be given to others after 15 minutes.</li>
-                <li>Maximum of 3 hours per session.</li>
-              </ul>
+          <!-- Create Announcement Panel (Right) -->
+          <div class="announcement-panel animate__animated animate__fadeInUp">
+            <h3><i class="fas fa-bullhorn"></i> Create Announcement</h3>
+            <form id="createAnnouncementForm" class="announcement-form">
+              <div class="form-group">
+                <label for="announcementTitle">Title</label>
+                <input type="text" id="announcementTitle" placeholder="Enter announcement title" required />
+              </div>
+              <div class="form-group">
+                <label for="announcementContent">Content</label>
+                <textarea id="announcementContent" rows="5" placeholder="Enter announcement content"
+                  required></textarea>
+              </div>
+              <div class="form-group">
+                <label for="announcementPriority">Priority</label>
+                <select id="announcementPriority" required>
+                  <option value="normal">Normal</option>
+                  <option value="important">Important</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn-primary">
+                  <i class="fas fa-paper-plane"></i> Post Announcement
+                </button>
+              </div>
+            </form>
+
+            <!-- Recent Announcements List -->
+            <div class="recent-announcements animate__animated animate__fadeInUp">
+              <h4><i class="fas fa-list"></i> Recent Announcements</h4>
+              <div id="dashboardAnnouncementsList" class="dashboard-announcements-list">
+                <!-- Announcements will be loaded here dynamically -->
+              </div>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <!-- Notifications Section -->
-        <section class="content-section hidden" id="notificationsSection">
-          <h2 class="section-title animate__animated animate__fadeInUp">
-            <i class="fas fa-bell"></i> All Notifications
-          </h2>
-          
-          <div class="notifications-container animate__animated animate__fadeInUp">
-            <div class="notifications-actions">
-              <button class="btn-primary" onclick="markAllRead()">
-                <i class="fas fa-check-double"></i> Mark All as Read
+      <!-- Admin Search Section -->
+      <section class="content-section hidden" id="searchSection">
+        <h2 class="section-title animate__animated animate__fadeInUp">
+          <i class="fas fa-search"></i> Search Student
+        </h2>
+
+        <div class="search-container animate__animated animate__fadeInUp">
+          <div class="search-form">
+            <input type="text" id="adminSearchInput" placeholder="Enter Student ID Number or Name..." />
+            <button class="btn-primary" onclick="adminSearchStudent()">
+              <i class="fas fa-search"></i> Search
+            </button>
+          </div>
+          <div id="searchResults" class="search-results"></div>
+        </div>
+
+        <!-- Student Info Form (Hidden by default) -->
+        <div id="studentInfoForm" class="student-info-card animate__animated animate__fadeInUp" style="display: none;">
+          <h3><i class="fas fa-user"></i> Student Information</h3>
+          <div class="student-info-grid">
+            <div class="info-group">
+              <label>ID Number:</label>
+              <span id="studentIdNumber"></span>
+            </div>
+            <div class="info-group">
+              <label>Name:</label>
+              <span id="studentName"></span>
+            </div>
+            <div class="info-group">
+              <label>Course:</label>
+              <span id="studentCourse"></span>
+            </div>
+            <div class="info-group">
+              <label>Year Level:</label>
+              <span id="studentYear"></span>
+            </div>
+            <div class="info-group">
+              <label>Email:</label>
+              <span id="studentEmail"></span>
+            </div>
+            <div class="info-group">
+              <label>Status:</label>
+              <span id="studentStatus"></span>
+            </div>
+          </div>
+          <div class="student-info-actions">
+            <button class="btn-secondary" onclick="closeStudentInfo()">
+              <i class="fas fa-times"></i> Close
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Student Management Section -->
+      <section class="content-section hidden" id="studentMgmtSection">
+        <h2 class="section-title animate__animated animate__fadeInUp">
+          <i class="fas fa-user-graduate"></i> Student Management
+        </h2>
+
+        <div class="student-mgmt-container animate__animated animate__fadeInUp">
+          <div class="student-mgmt-header">
+            <button class="btn-primary" onclick="showAddStudentForm()">
+              <i class="fas fa-plus"></i> Add Student
+            </button>
+          </div>
+
+          <div class="table-container">
+            <table id="studentsTable">
+              <thead>
+                <tr>
+                  <th>ID Number</th>
+                  <th>Name</th>
+                  <th>Course</th>
+                  <th>Year</th>
+                  <th>Email</th>
+                  <th>Remaining Sessions</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="studentsTableBody">
+                <!-- Student data will be loaded here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sit-in Modal -->
+      <div id="sitInModal" class="modal hidden">
+        <div class="modal-content animate__animated animate__fadeInUp" style="max-width: 500px;">
+          <span class="modal-close" onclick="closeSitInModal()">&times;</span>
+          <h2><i class="fas fa-laptop"></i> Record Sit-in</h2>
+          <form id="adminSitInForm">
+            <div class="form-group">
+              <label for="studentIdNumber">Student ID Number</label>
+              <input type="text" id="studentIdNumber" required placeholder="Search student ID" readonly />
+            </div>
+            <div class="form-group">
+              <label for="studentName">Student Name</label>
+              <input type="text" id="studentName" required placeholder="Enter student name" readonly />
+            </div>
+            <div class="form-group">
+              <label for="studentSession">Remaining Session</label>
+              <input type="number" id="studentSession" required min="0" value="30" readonly />
+            </div>
+            <div class="form-group">
+              <label for="labRoom">Laboratory Room</label>
+              <select id="labRoom" required>
+                <option value="">Select Laboratory</option>
+                <option value="Lab 1">Laboratory 524</option>
+                <option value="Lab 2">Laboratory 526</option>
+                <option value="Lab 3">Laboratory 528</option>
+                <option value="Lab 4">Laboratory 530</option>
+                <option value="Lab 5">Laboratory 544</option>
+                <option value="Lab 6">Laboratory 542</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="sitInPurpose">Purpose</label>
+              <select id="sitInPurpose" required>
+                <option value="">Select Purpose</option>
+                <option value="Coding">Coding/Programming</option>
+                <option value="Research">Research</option>
+                <option value="Assignment">Assignment</option>
+                <option value="Project">Project Development</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn-secondary" onclick="closeSitInModal()">Cancel</button>
+              <button type="submit" class="btn-primary">
+                <i class="fas fa-sign-in-alt"></i> Check In
               </button>
-              <button class="btn-secondary" onclick="clearAllNotifications()">
-                <i class="fas fa-trash"></i> Clear All
-              </button>
             </div>
-            <div class="notifications-list-full" id="notificationsListFull">
-              <!-- All notifications will be loaded here -->
-            </div>
-          </div>
-        </section>
+          </form>
+        </div>
+      </div>
 
-        <!-- Admin Dashboard Section -->
-        <section class="content-section hidden" id="adminDashboardSection">
-          <h2 class="section-title animate__animated animate__fadeInUp">
-            <i class="fas fa-tachometer-alt"></i> Admin Dashboard
-          </h2>
+      <!-- Sit-in Management Section -->
+      <section class="content-section hidden" id="sitInSection">
+        <h2 class="section-title animate__animated animate__fadeInUp">
+          <i class="fas fa-laptop"></i> Sit-in Management
+        </h2>
 
-          <div class="admin-dashboard-container">
-            <!-- Statistics Panel (Left) -->
-            <div class="statistics-panel animate__animated animate__fadeInUp">
-              <h3><i class="fas fa-chart-bar"></i> Statistics</h3>
-              <div class="statistics-grid">
-                <div class="stat-card">
-                  <div class="stat-icon">
-                    <i class="fas fa-users"></i>
-                  </div>
-                  <div class="stat-info">
-                    <p class="stat-number" id="totalStudents">0</p>
-                    <p class="stat-label">Total Students</p>
-                  </div>
-                </div>
-
-                <div class="stat-card">
-                  <div class="stat-icon">
-                    <i class="fas fa-laptop"></i>
-                  </div>
-                  <div class="stat-info">
-                    <p class="stat-number" id="activeSitins">0</p>
-                    <p class="stat-label">Active Sit-ins</p>
-                  </div>
-                </div>
-
-                <div class="stat-card">
-                  <div class="stat-icon">
-                    <i class="fas fa-calendar-check"></i>
-                  </div>
-                  <div class="stat-info">
-                    <p class="stat-number" id="todayReservations">0</p>
-                    <p class="stat-label">Today's Reservations</p>
-                  </div>
-                </div>
-
-                <div class="stat-card">
-                  <div class="stat-icon">
-                    <i class="fas fa-comments"></i>
-                  </div>
-                  <div class="stat-info">
-                    <p class="stat-number" id="totalFeedbacks">0</p>
-                    <p class="stat-label">Total Feedbacks</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Create Announcement Panel (Right) -->
-            <div class="announcement-panel animate__animated animate__fadeInUp">
-              <h3><i class="fas fa-bullhorn"></i> Create Announcement</h3>
-              <form id="createAnnouncementForm" class="announcement-form">
-                <div class="form-group">
-                  <label for="announcementTitle">Title</label>
-                  <input type="text" id="announcementTitle" placeholder="Enter announcement title" required />
-                </div>
-                <div class="form-group">
-                  <label for="announcementContent">Content</label>
-                  <textarea id="announcementContent" rows="5" placeholder="Enter announcement content" required></textarea>
-                </div>
-                <div class="form-group">
-                  <label for="announcementPriority">Priority</label>
-                  <select id="announcementPriority" required>
-                    <option value="normal">Normal</option>
-                    <option value="important">Important</option>
-                    <option value="urgent">Urgent</option>
-                  </select>
-                </div>
-                <div class="form-actions">
-                  <button type="submit" class="btn-primary">
-                    <i class="fas fa-paper-plane"></i> Post Announcement
-                  </button>
-                </div>
-              </form>
-              
-              <!-- Recent Announcements List -->
-              <div class="recent-announcements animate__animated animate__fadeInUp">
-                <h4><i class="fas fa-list"></i> Recent Announcements</h4>
-                <div id="dashboardAnnouncementsList" class="dashboard-announcements-list">
-                  <!-- Announcements will be loaded here dynamically -->
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Admin Search Section -->
-        <section class="content-section hidden" id="searchSection">
-          <h2 class="section-title animate__animated animate__fadeInUp">
-            <i class="fas fa-search"></i> Search Student
-          </h2>
-          
-          <div class="search-container animate__animated animate__fadeInUp">
-            <div class="search-form">
-              <input type="text" id="adminSearchInput" placeholder="Enter Student ID Number or Name..." />
-              <button class="btn-primary" onclick="adminSearchStudent()">
-                <i class="fas fa-search"></i> Search
-              </button>
-            </div>
-            <div id="searchResults" class="search-results"></div>
-          </div>
-          
-          <!-- Student Info Form (Hidden by default) -->
-          <div id="studentInfoForm" class="student-info-card animate__animated animate__fadeInUp" style="display: none;">
-            <h3><i class="fas fa-user"></i> Student Information</h3>
-            <div class="student-info-grid">
-              <div class="info-group">
-                <label>ID Number:</label>
-                <span id="studentIdNumber"></span>
-              </div>
-              <div class="info-group">
-                <label>Name:</label>
-                <span id="studentName"></span>
-              </div>
-              <div class="info-group">
-                <label>Course:</label>
-                <span id="studentCourse"></span>
-              </div>
-              <div class="info-group">
-                <label>Year Level:</label>
-                <span id="studentYear"></span>
-              </div>
-              <div class="info-group">
-                <label>Email:</label>
-                <span id="studentEmail"></span>
-              </div>
-              <div class="info-group">
-                <label>Status:</label>
-                <span id="studentStatus"></span>
-              </div>
-            </div>
-            <div class="student-info-actions">
-              <button class="btn-secondary" onclick="closeStudentInfo()">
-                <i class="fas fa-times"></i> Close
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <!-- Student Management Section -->
-        <section class="content-section hidden" id="studentMgmtSection">
-          <h2 class="section-title animate__animated animate__fadeInUp">
-            <i class="fas fa-user-graduate"></i> Student Management
-          </h2>
-          
-          <div class="student-mgmt-container animate__animated animate__fadeInUp">
-            <div class="student-mgmt-header">
-              <button class="btn-primary" onclick="showAddStudentForm()">
-                <i class="fas fa-plus"></i> Add Student
-              </button>
-            </div>
-            
-            <div class="table-container">
-              <table id="studentsTable">
-                <thead>
-                  <tr>
-                    <th>ID Number</th>
-                    <th>Name</th>
-                    <th>Course</th>
-                    <th>Year</th>
-                    <th>Email</th>
-                    <th>Remaining Sessions</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="studentsTableBody">
-                  <!-- Student data will be loaded here -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <!-- Sit-in Modal -->
-        <div id="sitInModal" class="modal hidden">
-          <div class="modal-content animate__animated animate__fadeInUp" style="max-width: 500px;">
-            <span class="modal-close" onclick="closeSitInModal()">&times;</span>
-            <h2><i class="fas fa-laptop"></i> Record Sit-in</h2>
+        <div class="sitIn-container animate__animated animate__fadeInUp">
+          <div class="sitIn-form-card">
+            <h3>Record Sit-in</h3>
             <form id="adminSitInForm">
               <div class="form-group">
                 <label for="studentIdNumber">Student ID Number</label>
-                <input type="text" id="studentIdNumber" required placeholder="Search student ID" readonly />
+                <input type="text" id="studentIdNumber" required placeholder="Search student ID" />
               </div>
               <div class="form-group">
                 <label for="studentName">Student Name</label>
-                <input type="text" id="studentName" required placeholder="Enter student name" readonly />
+                <input type="text" id="studentName" required placeholder="Enter student name" />
               </div>
               <div class="form-group">
                 <label for="studentSession">Remaining Session</label>
-                <input type="number" id="studentSession" required min="0" value="30" readonly />
+                <input type="number" id="studentSession" required min="0" value="30" />
               </div>
               <div class="form-group">
                 <label for="labRoom">Laboratory Room</label>
@@ -765,7 +812,6 @@
                 </select>
               </div>
               <div class="form-actions">
-                <button type="button" class="btn-secondary" onclick="closeSitInModal()">Cancel</button>
                 <button type="submit" class="btn-primary">
                   <i class="fas fa-sign-in-alt"></i> Check In
                 </button>
@@ -773,146 +819,93 @@
             </form>
           </div>
         </div>
+      </section>
 
-        <!-- Sit-in Management Section -->
-        <section class="content-section hidden" id="sitInSection">
-          <h2 class="section-title animate__animated animate__fadeInUp">
-            <i class="fas fa-laptop"></i> Sit-in Management
-          </h2>
-          
-          <div class="sitIn-container animate__animated animate__fadeInUp">
-            <div class="sitIn-form-card">
-              <h3>Record Sit-in</h3>
-              <form id="adminSitInForm">
-                <div class="form-group">
-                  <label for="studentIdNumber">Student ID Number</label>
-                  <input type="text" id="studentIdNumber" required placeholder="Search student ID" />
-                </div>
-                <div class="form-group">
-                  <label for="studentName">Student Name</label>
-                  <input type="text" id="studentName" required placeholder="Enter student name" />
-                </div>
-                <div class="form-group">
-                  <label for="studentSession">Remaining Session</label>
-                  <input type="number" id="studentSession" required min="0" value="30" />
-                </div>
-                <div class="form-group">
-                  <label for="labRoom">Laboratory Room</label>
-                  <select id="labRoom" required>
-                    <option value="">Select Laboratory</option>
-                    <option value="Lab 1">Laboratory 524</option>
-                    <option value="Lab 2">Laboratory 526</option>
-                    <option value="Lab 3">Laboratory 528</option>
-                    <option value="Lab 4">Laboratory 530</option>
-                    <option value="Lab 5">Laboratory 544</option>
-                    <option value="Lab 6">Laboratory 542</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="sitInPurpose">Purpose</label>
-                  <select id="sitInPurpose" required>
-                    <option value="">Select Purpose</option>
-                    <option value="Coding">Coding/Programming</option>
-                    <option value="Research">Research</option>
-                    <option value="Assignment">Assignment</option>
-                    <option value="Project">Project Development</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                <div class="form-actions">
-                  <button type="submit" class="btn-primary">
-                    <i class="fas fa-sign-in-alt"></i> Check In
-                  </button>
-                </div>
-              </form>
+      <!-- View Sit-in Records Section -->
+      <section class="content-section hidden" id="viewRecordsSection">
+        <h2 class="section-title animate__animated animate__fadeInUp">
+          <i class="fas fa-clipboard-list"></i> View Sit-in Records
+        </h2>
+
+        <div class="records-container animate__animated animate__fadeInUp">
+          <div class="records-filters">
+            <div class="filter-group">
+              <label for="filterDate">Date:</label>
+              <input type="date" id="filterDate" onchange="filterRecords()" />
             </div>
+            <div class="filter-group">
+              <label for="filterLabRoom">Lab Room:</label>
+              <select id="filterLabRoom" onchange="filterRecords()">
+                <option value="">All Labs</option>
+                <option value="Lab 1">Lab 1</option>
+                <option value="Lab 2">Lab 2</option>
+                <option value="Lab 3">Lab 3</option>
+                <option value="Lab 4">Lab 4</option>
+                <option value="Lab 5">Lab 5</option>
+              </select>
+            </div>
+            <button class="btn-secondary" onclick="clearRecordFilters()">
+              <i class="fas fa-times"></i> Clear
+            </button>
           </div>
-        </section>
 
-        <!-- View Sit-in Records Section -->
-        <section class="content-section hidden" id="viewRecordsSection">
-          <h2 class="section-title animate__animated animate__fadeInUp">
-            <i class="fas fa-clipboard-list"></i> View Sit-in Records
-          </h2>
-          
-          <div class="records-container animate__animated animate__fadeInUp">
-            <div class="records-filters">
-              <div class="filter-group">
-                <label for="filterDate">Date:</label>
-                <input type="date" id="filterDate" onchange="filterRecords()" />
-              </div>
-              <div class="filter-group">
-                <label for="filterLabRoom">Lab Room:</label>
-                <select id="filterLabRoom" onchange="filterRecords()">
-                  <option value="">All Labs</option>
-                  <option value="Lab 1">Lab 1</option>
-                  <option value="Lab 2">Lab 2</option>
-                  <option value="Lab 3">Lab 3</option>
-                  <option value="Lab 4">Lab 4</option>
-                  <option value="Lab 5">Lab 5</option>
-                </select>
-              </div>
-              <button class="btn-secondary" onclick="clearRecordFilters()">
-                <i class="fas fa-times"></i> Clear
-              </button>
-            </div>
-            
-            <div class="table-container">
-              <table id="recordsTable">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Student ID</th>
-                    <th>Name</th>
-                    <th>Lab Room</th>
-                    <th>Purpose</th>
-                    <th>Time In</th>
-                    <th>Time Out</th>
-                    <th>Duration</th>
-                  </tr>
-                </thead>
-                <tbody id="recordsTableBody">
-                  <!-- Records will be loaded here -->
-                </tbody>
-              </table>
-            </div>
+          <div class="table-container">
+            <table id="recordsTable">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Student ID</th>
+                  <th>Name</th>
+                  <th>Lab Room</th>
+                  <th>Purpose</th>
+                  <th>Time In</th>
+                  <th>Time Out</th>
+                  <th>Duration</th>
+                </tr>
+              </thead>
+              <tbody id="recordsTableBody">
+                <!-- Records will be loaded here -->
+              </tbody>
+            </table>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <!-- Feedbacks Reports Section -->
-        <section class="content-section hidden" id="feedbacksSection">
-          <h2 class="section-title animate__animated animate__fadeInUp">
-            <i class="fas fa-comments"></i> Feedbacks Reports
-          </h2>
-          
-          <div class="feedbacks-container animate__animated animate__fadeInUp">
-            <div class="table-container">
-              <table id="feedbacksTable">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Student</th>
-                    <th>Rating</th>
-                    <th>Comment</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="feedbacksTableBody">
-                  <!-- Feedbacks will be loaded here -->
-                </tbody>
-              </table>
-            </div>
+      <!-- Feedbacks Reports Section -->
+      <section class="content-section hidden" id="feedbacksSection">
+        <h2 class="section-title animate__animated animate__fadeInUp">
+          <i class="fas fa-comments"></i> Feedbacks Reports
+        </h2>
+
+        <div class="feedbacks-container animate__animated animate__fadeInUp">
+          <div class="table-container">
+            <table id="feedbacksTable">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Student</th>
+                  <th>Rating</th>
+                  <th>Comment</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="feedbacksTableBody">
+                <!-- Feedbacks will be loaded here -->
+              </tbody>
+            </table>
           </div>
-        </section>
-      </main>
-    </div>
+        </div>
+      </section>
+    </main>
+  </div>
 
-    <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loadingOverlay">
-      <div class="spinner"></div>
-      <p>Loading...</p>
-    </div>
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <p>Loading...</p>
+  </div>
 
-    <script src="/pages/dashboard.js"></script>
-  </body>
+  <script src="/pages/dashboard.js"></script>
+</body>
+
 </html>

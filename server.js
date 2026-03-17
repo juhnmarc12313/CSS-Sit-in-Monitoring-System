@@ -49,7 +49,7 @@ app.use('/uploads', express.static(uploadsDir));
 
 
 //Serve static
-app.use (express.static('public'));
+app.use(express.static('public'));
 
 // Initialize SQLite Database
 const db = new sqlite3.Database('./database.db', (err) => {
@@ -103,14 +103,14 @@ function initializeDatabase() {
                         console.error('Error adding role column:', alterErr.message);
                     }
                 });
-                
+
                 // Add remaining_sessions column if it doesn't exist (for existing databases)
                 db.run(`ALTER TABLE users ADD COLUMN remaining_sessions INTEGER DEFAULT 30`, (alterErr) => {
                     if (alterErr && !alterErr.message.includes('duplicate column name')) {
                         console.error('Error adding remaining_sessions column:', alterErr.message);
                     }
                 });
-                
+
                 // Create default admin account
                 createDefaultAdmin();
             }
@@ -169,14 +169,14 @@ function initializeDatabase() {
 function createDefaultAdmin() {
     const adminIdNumber = 'admin';
     const adminPassword = hashPassword('admin123');
-    
+
     // Check if admin exists
     db.get(`SELECT id FROM users WHERE id_number = ?`, [adminIdNumber], (err, row) => {
         if (err) {
             console.error('Error checking for admin:', err.message);
             return;
         }
-        
+
         if (!row) {
             // Create admin user
             const query = `
@@ -186,7 +186,7 @@ function createDefaultAdmin() {
                     password_hash, role, is_active
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
-            
+
             db.run(query, [
                 adminIdNumber,
                 'Admin',
@@ -248,7 +248,7 @@ app.post('/api/register', (req, res) => {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    db.run(query, [id_number, last_name, first_name, middle_name, course_level, course, address, email, password_hash], function(err) {
+    db.run(query, [id_number, last_name, first_name, middle_name, course_level, course, address, email, password_hash], function (err) {
         if (err) {
             if (err.message.includes('UNIQUE constraint failed')) {
                 if (err.message.includes('email')) {
@@ -325,7 +325,7 @@ app.post('/api/logout', (req, res) => {
 
     const query = `UPDATE sessions SET logout_time = CURRENT_TIMESTAMP WHERE session_token = ?`;
 
-    db.run(query, [session_token], function(err) {
+    db.run(query, [session_token], function (err) {
         if (err) {
             return res.status(500).json({ error: 'Logout failed: ' + err.message });
         }
@@ -413,7 +413,7 @@ app.post('/api/user/:id/profile-picture', upload.single('profilePicture'), (req,
 
         // Update database with new profile picture path
         const query = `UPDATE users SET profile_picture = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
-        db.run(query, [profilePicturePath, id], function(err) {
+        db.run(query, [profilePicturePath, id], function (err) {
             if (err) {
                 return res.status(500).json({ error: 'Failed to update profile picture: ' + err.message });
             }
@@ -426,9 +426,9 @@ app.post('/api/user/:id/profile-picture', upload.single('profilePicture'), (req,
                 });
             }
 
-            res.json({ 
-                message: 'Profile picture uploaded successfully', 
-                profile_picture: profilePicturePath 
+            res.json({
+                message: 'Profile picture uploaded successfully',
+                profile_picture: profilePicturePath
             });
         });
     });
@@ -444,7 +444,7 @@ app.post('/api/sitin/checkin', (req, res) => {
 
     const query = `INSERT INTO sit_in_records (user_id, lab_room, purpose) VALUES (?, ?, ?)`;
 
-    db.run(query, [user_id, lab_room, purpose], function(err) {
+    db.run(query, [user_id, lab_room, purpose], function (err) {
         if (err) {
             return res.status(500).json({ error: 'Check-in failed: ' + err.message });
         }
@@ -462,7 +462,7 @@ app.post('/api/sitin/checkout', (req, res) => {
 
     const query = `UPDATE sit_in_records SET time_out = CURRENT_TIMESTAMP WHERE id = ? AND time_out IS NULL`;
 
-    db.run(query, [record_id], function(err) {
+    db.run(query, [record_id], function (err) {
         if (err) {
             return res.status(500).json({ error: 'Check-out failed: ' + err.message });
         }
@@ -546,7 +546,7 @@ app.put('/api/user/:id/role', (req, res) => {
     }
 
     const query = `UPDATE users SET role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
-    db.run(query, [role, id], function(err) {
+    db.run(query, [role, id], function (err) {
         if (err) {
             return res.status(500).json({ error: 'Failed to update role: ' + err.message });
         }
@@ -564,7 +564,7 @@ app.put('/api/user/:id/role', (req, res) => {
 // Get all students (admin)
 app.get('/api/admin/students', (req, res) => {
     const query = `SELECT id, id_number, first_name, last_name, middle_name, course, course_level, email, address, role, is_active, remaining_sessions FROM users WHERE role = 'student' ORDER BY last_name, first_name`;
-    
+
     db.all(query, [], (err, students) => {
         if (err) {
             return res.status(500).json({ error: 'Failed to fetch students: ' + err.message });
@@ -576,20 +576,20 @@ app.get('/api/admin/students', (req, res) => {
 // Add new student (admin)
 app.post('/api/admin/students', (req, res) => {
     const { id_number, first_name, last_name, middle_name, email, course, course_level, address, password, remaining_sessions } = req.body;
-    
+
     if (!id_number || !first_name || !last_name || !email || !course || !course_level || !password) {
         return res.status(400).json({ error: 'All required fields must be filled' });
     }
-    
+
     const password_hash = crypto.createHash('sha256').update(password).digest('hex');
     const sessions = remaining_sessions !== undefined ? remaining_sessions : 30;
-    
+
     const query = `
         INSERT INTO users (id_number, first_name, last_name, middle_name, email, course, course_level, address, password_hash, role, is_active, remaining_sessions)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'student', 1, ?)
     `;
-    
-    db.run(query, [id_number, first_name, last_name, middle_name || null, email, course, course_level, address || null, password_hash, sessions], function(err) {
+
+    db.run(query, [id_number, first_name, last_name, middle_name || null, email, course, course_level, address || null, password_hash, sessions], function (err) {
         if (err) {
             if (err.message.includes('UNIQUE constraint failed')) {
                 if (err.message.includes('id_number')) {
@@ -608,14 +608,14 @@ app.post('/api/admin/students', (req, res) => {
 app.put('/api/admin/students/:id/sessions', (req, res) => {
     const { id } = req.params;
     const { remaining_sessions } = req.body;
-    
+
     if (remaining_sessions === undefined || remaining_sessions < 0) {
         return res.status(400).json({ error: 'Valid remaining_sessions value is required' });
     }
-    
+
     const query = `UPDATE users SET remaining_sessions = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND role = 'student'`;
-    
-    db.run(query, [remaining_sessions, id], function(err) {
+
+    db.run(query, [remaining_sessions, id], function (err) {
         if (err) {
             return res.status(500).json({ error: 'Failed to update remaining sessions: ' + err.message });
         }
@@ -629,11 +629,11 @@ app.put('/api/admin/students/:id/sessions', (req, res) => {
 // Delete student (admin)
 app.delete('/api/admin/students/:id', (req, res) => {
     const { id } = req.params;
-    
+
     // Soft delete - set is_active to 0
     const query = `UPDATE users SET is_active = 0 WHERE id = ? AND role = 'student'`;
-    
-    db.run(query, [id], function(err) {
+
+    db.run(query, [id], function (err) {
         if (err) {
             return res.status(500).json({ error: 'Failed to delete student: ' + err.message });
         }
@@ -647,7 +647,7 @@ app.delete('/api/admin/students/:id', (req, res) => {
 // Get admin dashboard stats
 app.get('/api/admin/stats', (req, res) => {
     const stats = {};
-    
+
     // Get total students
     db.get(`SELECT COUNT(*) as count FROM users WHERE is_active = 1`, [], (err, row) => {
         if (err) {
@@ -655,7 +655,7 @@ app.get('/api/admin/stats', (req, res) => {
         } else {
             stats.totalStudents = row.count;
         }
-        
+
         // Get active sit-ins
         db.get(`SELECT COUNT(*) as count FROM sit_in_records WHERE time_out IS NULL`, [], (err, row) => {
             if (err) {
@@ -663,7 +663,7 @@ app.get('/api/admin/stats', (req, res) => {
             } else {
                 stats.activeSitins = row.count;
             }
-            
+
             // Get today's reservations
             const today = new Date().toISOString().split('T')[0];
             db.get(`SELECT COUNT(*) as count FROM reservations WHERE date = ?`, [today], (err, row) => {
@@ -672,7 +672,7 @@ app.get('/api/admin/stats', (req, res) => {
                 } else {
                     stats.todayReservations = row.count;
                 }
-                
+
                 res.json(stats);
             });
         });
@@ -689,7 +689,7 @@ app.get('/api/admin/records', (req, res) => {
         WHERE 1=1
     `;
     const params = [];
-    
+
     if (date) {
         query += ` AND sr.date = ?`;
         params.push(date);
@@ -698,9 +698,9 @@ app.get('/api/admin/records', (req, res) => {
         query += ` AND sr.lab_room = ?`;
         params.push(lab_room);
     }
-    
+
     query += ` ORDER BY sr.date DESC, sr.time_in DESC`;
-    
+
     db.all(query, params, (err, records) => {
         if (err) {
             return res.status(500).json({ error: 'Failed to fetch records: ' + err.message });
@@ -712,11 +712,11 @@ app.get('/api/admin/records', (req, res) => {
 // Search students (admin)
 app.get('/api/admin/search', (req, res) => {
     const { q } = req.query;
-    
+
     if (!q) {
         return res.json([]);
     }
-    
+
     const query = `
         SELECT id, id_number, first_name, last_name, course, course_level, email
         FROM users 
@@ -729,7 +729,7 @@ app.get('/api/admin/search', (req, res) => {
         LIMIT 20
     `;
     const searchTerm = `%${q}%`;
-    
+
     db.all(query, [searchTerm, searchTerm, searchTerm, searchTerm], (err, results) => {
         if (err) {
             return res.status(500).json({ error: 'Search failed: ' + err.message });
@@ -741,17 +741,17 @@ app.get('/api/admin/search', (req, res) => {
 // Get student by ID number (admin)
 app.get('/api/admin/student/:idNumber', (req, res) => {
     const { idNumber } = req.params;
-    
+
     if (!idNumber) {
         return res.status(400).json({ error: 'ID number is required' });
     }
-    
+
     const query = `
         SELECT id, id_number, first_name, last_name, middle_name, email, course, course_level, is_active, created_at, remaining_sessions
         FROM users 
         WHERE id_number = ? AND role = 'student'
     `;
-    
+
     db.get(query, [idNumber], (err, student) => {
         if (err) {
             console.error('Search error:', err.message);
@@ -768,12 +768,12 @@ app.get('/api/admin/student/:idNumber', (req, res) => {
 app.get('/api/admin/students/search', (req, res) => {
     const { q } = req.query;
     const session_token = req.headers.authorization?.replace('Bearer ', '');
-    
+
     // Skip authorization check for now - just search
     if (!q || q.trim().length < 2) {
         return res.status(400).json({ error: 'Search query must be at least 2 characters' });
     }
-    
+
     const searchTerm = `%${q.trim()}%`;
     const query = `
         SELECT id, id_number, first_name, last_name, middle_name, email, course, course_level, is_active, created_at, remaining_sessions
@@ -783,7 +783,7 @@ app.get('/api/admin/students/search', (req, res) => {
         ORDER BY last_name, first_name
         LIMIT 20
     `;
-    
+
     db.all(query, [searchTerm, searchTerm, searchTerm], (err, students) => {
         if (err) {
             console.error('Search error:', err.message);
@@ -801,7 +801,7 @@ app.get('/api/admin/feedbacks', (req, res) => {
         JOIN users u ON f.user_id = u.id
         ORDER BY f.created_at DESC
     `;
-    
+
     db.all(query, [], (err, feedbacks) => {
         if (err) {
             return res.status(500).json({ error: 'Failed to fetch feedbacks: ' + err.message });
@@ -851,7 +851,7 @@ function updateProfile(id, first_name, last_name, middle_name, email, course, co
         params = [first_name, last_name, middle_name, email, course, course_level, address, id];
     }
 
-    db.run(query, params, function(err) {
+    db.run(query, params, function (err) {
         if (err) {
             if (err.message.includes('UNIQUE constraint failed')) {
                 return res.status(409).json({ error: 'Email already in use' });
@@ -912,7 +912,7 @@ app.get('/api/announcements', (req, res) => {
         WHERE a.is_active = 1
         ORDER BY a.created_at DESC
     `;
-    
+
     db.all(query, [], (err, announcements) => {
         if (err) {
             return res.status(500).json({ error: 'Failed to fetch announcements: ' + err.message });
@@ -929,7 +929,7 @@ app.get('/api/admin/announcements', (req, res) => {
         JOIN users u ON a.admin_id = u.id
         ORDER BY a.created_at DESC
     `;
-    
+
     db.all(query, [], (err, announcements) => {
         if (err) {
             return res.status(500).json({ error: 'Failed to fetch announcements: ' + err.message });
@@ -942,34 +942,34 @@ app.get('/api/admin/announcements', (req, res) => {
 app.post('/api/admin/announcements', (req, res) => {
     const { title, content, priority } = req.body;
     const session_token = req.headers.authorization?.replace('Bearer ', '');
-    
+
     if (!title || !content) {
         return res.status(400).json({ error: 'Title and content are required' });
     }
-    
+
     if (!session_token) {
         return res.status(401).json({ error: 'Unauthorized - No session token' });
     }
-    
+
     // Get user from session token
     const userQuery = `SELECT user_id, u.role FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.session_token = ? AND s.logout_time IS NULL`;
     db.get(userQuery, [session_token], (err, session) => {
         if (err || !session) {
             return res.status(401).json({ error: 'Unauthorized - Invalid session' });
         }
-        
+
         if (session.role !== 'admin') {
             return res.status(403).json({ error: 'Forbidden - Admin access required' });
         }
-        
+
         const adminId = session.user_id;
-        
+
         const query = `
             INSERT INTO announcements (title, content, priority, admin_id)
             VALUES (?, ?, ?, ?)
         `;
-        
-        db.run(query, [title, content, priority || 'normal', adminId], function(err) {
+
+        db.run(query, [title, content, priority || 'normal', adminId], function (err) {
             if (err) {
                 return res.status(500).json({ error: 'Failed to create announcement: ' + err.message });
             }
@@ -982,26 +982,26 @@ app.post('/api/admin/announcements', (req, res) => {
 app.delete('/api/admin/announcements/:id', (req, res) => {
     const { id } = req.params;
     const session_token = req.headers.authorization?.replace('Bearer ', '');
-    
+
     if (!session_token) {
         return res.status(401).json({ error: 'Unauthorized - No session token' });
     }
-    
+
     // Get user from session token
     const userQuery = `SELECT user_id, u.role FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.session_token = ? AND s.logout_time IS NULL`;
     db.get(userQuery, [session_token], (err, session) => {
         if (err || !session) {
             return res.status(401).json({ error: 'Unauthorized - Invalid session' });
         }
-        
+
         if (session.role !== 'admin') {
             return res.status(403).json({ error: 'Forbidden - Admin access required' });
         }
-        
+
         // Soft delete - set is_active to 0
         const query = `UPDATE announcements SET is_active = 0 WHERE id = ?`;
-        
-        db.run(query, [id], function(err) {
+
+        db.run(query, [id], function (err) {
             if (err) {
                 return res.status(500).json({ error: 'Failed to remove announcement: ' + err.message });
             }
@@ -1035,7 +1035,7 @@ app.put('/api/notifications/:id/read', (req, res) => {
 
     const query = `UPDATE notifications SET is_read = 1 WHERE id = ?`;
 
-    db.run(query, [id], function(err) {
+    db.run(query, [id], function (err) {
         if (err) {
             return res.status(500).json({ error: 'Failed to update notification: ' + err.message });
         }
@@ -1049,7 +1049,7 @@ app.put('/api/notifications/user/:user_id/read-all', (req, res) => {
 
     const query = `UPDATE notifications SET is_read = 1 WHERE user_id = ?`;
 
-    db.run(query, [user_id], function(err) {
+    db.run(query, [user_id], function (err) {
         if (err) {
             return res.status(500).json({ error: 'Failed to update notifications: ' + err.message });
         }
@@ -1067,7 +1067,7 @@ app.post('/api/notifications', (req, res) => {
 
     const query = `INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)`;
 
-    db.run(query, [user_id, title, message], function(err) {
+    db.run(query, [user_id, title, message], function (err) {
         if (err) {
             return res.status(500).json({ error: 'Failed to create notification: ' + err.message });
         }

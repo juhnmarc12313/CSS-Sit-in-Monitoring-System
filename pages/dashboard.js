@@ -11,7 +11,7 @@ let notifications = [];
 // =============================================
 // Initialization
 // =============================================
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Check if session token exists
     sessionToken = localStorage.getItem('session_token');
 
@@ -27,14 +27,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function validateSession() {
     showLoading(true);
-    
+
     try {
         const response = await fetch(`/api/session/validate?token=${sessionToken}`);
-        
+
         if (response.ok) {
             const data = await response.json();
             currentUser = data.user;
-            
+
             // Initialize dashboard with user data from database
             initializeDashboard();
         } else {
@@ -48,17 +48,17 @@ async function validateSession() {
         localStorage.removeItem('session_token');
         window.location.href = 'login.html';
     }
-    
+
     showLoading(false);
 }
 
 function initializeDashboard() {
     // Get user role
     const userRole = currentUser.role || 'student';
-    
+
     // Display user information
     displayUserInfo();
-    
+
     if (userRole === 'admin') {
         // Show admin dashboard directly
         showSection('adminDashboard');
@@ -73,7 +73,7 @@ function initializeDashboard() {
         loadNotifications();
         loadAnnouncements();
     }
-    
+
     // Setup event listeners
     setupEventListeners();
 }
@@ -111,12 +111,12 @@ async function loadAllStudents() {
 function displayStudents(students) {
     const tbody = document.getElementById('studentsTableBody');
     if (!tbody) return;
-    
+
     if (!students || students.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7">No students found</td></tr>';
         return;
     }
-    
+
     tbody.innerHTML = students.map(student => `
         <tr>
             <td>${student.id_number}</td>
@@ -157,12 +157,12 @@ async function loadAllRecords() {
 function displayRecords(records) {
     const tbody = document.getElementById('recordsTableBody');
     if (!tbody) return;
-    
+
     if (!records || records.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8">No records found</td></tr>';
         return;
     }
-    
+
     tbody.innerHTML = records.map(record => {
         const duration = record.time_out ? calculateDuration(record.time_in, record.time_out) : 'Active';
         return `
@@ -205,12 +205,12 @@ async function loadFeedbacks() {
 function displayFeedbacks(feedbacks) {
     const tbody = document.getElementById('feedbacksTableBody');
     if (!tbody) return;
-    
+
     if (!feedbacks || feedbacks.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5">No feedbacks found</td></tr>';
         return;
     }
-    
+
     tbody.innerHTML = feedbacks.map(feedback => `
         <tr>
             <td>${feedback.created_at}</td>
@@ -233,16 +233,16 @@ async function adminSearchStudent() {
         alert('Please enter a student ID number or name');
         return;
     }
-    
+
     const searchResults = document.getElementById('searchResults');
     const studentInfoForm = document.getElementById('studentInfoForm');
-    
+
     try {
         const response = await fetch(`/api/admin/students/search?q=${encodeURIComponent(query)}`);
-        
+
         if (response.ok) {
             const students = await response.json();
-            
+
             if (students.length === 0) {
                 studentInfoForm.style.display = 'none';
                 searchResults.innerHTML = '<p class="no-data-message">No student found with that ID number or name</p>';
@@ -273,25 +273,9 @@ function redirectToSitInForm(student) {
     // Hide search results
     document.getElementById('searchResults').innerHTML = '';
     document.getElementById('studentInfoForm').style.display = 'none';
-    
-    // Show sit-in section
-    showSection('sitIn');
-    
-    // Pre-fill student ID
-    document.getElementById('studentIdNumber').value = student.id_number;
-    
-    // Also store student info in hidden fields for later use
-    document.getElementById('studentIdNumber').dataset.studentId = student.id;
-    document.getElementById('studentIdNumber').dataset.studentName = `${student.first_name} ${student.last_name}`;
-    document.getElementById('studentIdNumber').dataset.studentCourse = student.course;
-    document.getElementById('studentIdNumber').dataset.studentYear = student.course_level;
-    
-    // Clear previous selections
-    document.getElementById('labRoom').value = '';
-    document.getElementById('sitInPurpose').value = '';
-    
-    // Show confirmation modal
-    showStudentConfirmModal(student);
+
+    // Open modal and populate
+    redirectToSitInFormFromModal(student);
 }
 
 // Display search results list with option to go to sit-in
@@ -315,7 +299,7 @@ function displaySearchResultsListWithSitIn(students) {
 async function selectStudentForSitIn(studentId) {
     try {
         const response = await fetch(`/api/user/${studentId}`);
-        
+
         if (response.ok) {
             const student = await response.json();
             redirectToSitInForm(student);
@@ -342,14 +326,14 @@ function displaySearchResultsList(students) {
 // Select a student from search results
 async function selectStudent(studentId) {
     const token = localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
-    
+
     try {
         const response = await fetch(`/api/user/${studentId}`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
         });
-        
+
         if (response.ok) {
             const student = await response.json();
             displayStudentInfo(student);
@@ -385,9 +369,9 @@ function openSearchModal() {
     document.getElementById('modalSearchInput').value = '';
     document.getElementById('modalSearchResults').innerHTML = '';
     document.getElementById('modalSearchInput').focus();
-    
+
     // Add enter key listener
-    document.getElementById('modalSearchInput').onkeypress = function(e) {
+    document.getElementById('modalSearchInput').onkeypress = function (e) {
         if (e.key === 'Enter') {
             modalSearchStudent();
         }
@@ -415,7 +399,7 @@ function closeAddStudentModal() {
 
 async function submitAddStudent(event) {
     event.preventDefault();
-    
+
     const studentData = {
         id_number: document.getElementById('newStudentId').value.trim(),
         first_name: document.getElementById('newStudentFirstName').value.trim(),
@@ -428,7 +412,7 @@ async function submitAddStudent(event) {
         password: document.getElementById('newStudentPassword').value,
         remaining_sessions: parseInt(document.getElementById('newStudentSessions').value) || 30
     };
-    
+
     try {
         const response = await fetch('/api/admin/students', {
             method: 'POST',
@@ -437,7 +421,7 @@ async function submitAddStudent(event) {
             },
             body: JSON.stringify(studentData)
         });
-        
+
         if (response.ok) {
             showSuccessModal('Student Added', `${studentData.first_name} ${studentData.last_name} has been added successfully!`);
             closeAddStudentModal();
@@ -456,12 +440,12 @@ async function deleteStudent(studentId, studentName) {
     if (!confirm(`Are you sure you want to delete student: ${studentName}?`)) {
         return;
     }
-    
+
     try {
         const response = await fetch(`/api/admin/students/${studentId}`, {
             method: 'DELETE'
         });
-        
+
         if (response.ok) {
             showSuccessModal('Student Deleted', `${studentName} has been deleted successfully!`);
             loadAllStudents(); // Refresh the table
@@ -478,18 +462,18 @@ async function deleteStudent(studentId, studentName) {
 // Edit student remaining sessions
 function editStudentSessions(studentId, currentSessions) {
     const newSessions = prompt(`Enter new remaining sessions for student (current: ${currentSessions}):`, currentSessions);
-    
+
     if (newSessions === null || newSessions === '') {
         return;
     }
-    
+
     const sessions = parseInt(newSessions, 10);
-    
+
     if (isNaN(sessions) || sessions < 0) {
         showErrorModal('Invalid Value', 'Please enter a valid positive number');
         return;
     }
-    
+
     updateStudentSessions(studentId, sessions);
 }
 
@@ -502,7 +486,7 @@ async function updateStudentSessions(studentId, sessions) {
             },
             body: JSON.stringify({ remaining_sessions: sessions })
         });
-        
+
         if (response.ok) {
             showSuccessModal('Sessions Updated', `Student's remaining sessions have been updated to ${sessions}!`);
             loadAllStudents(); // Refresh the table
@@ -534,12 +518,12 @@ function showSuccessModal(title, message) {
             </div>
         </div>
     `;
-    
+
     const existingModal = document.getElementById('successModal');
     if (existingModal) {
         existingModal.remove();
     }
-    
+
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
@@ -557,15 +541,15 @@ async function modalSearchStudent() {
         alert('Please enter a student ID number or name');
         return;
     }
-    
+
     const resultsContainer = document.getElementById('modalSearchResults');
-    
+
     try {
         const response = await fetch(`/api/admin/students/search?q=${encodeURIComponent(query)}`);
-        
+
         if (response.ok) {
             const students = await response.json();
-            
+
             if (students.length === 0) {
                 resultsContainer.innerHTML = '<p class="no-data-message">No student found with that ID number or name</p>';
             } else if (students.length === 1) {
@@ -608,22 +592,36 @@ function displayModalSearchResults(students) {
 // Redirect to sit-in form from modal
 function redirectToSitInFormFromModal(student) {
     closeSearchModal();
-    
+
+    // Get the sit-in modal form elements
+    const sitInModal = document.getElementById('sitInModal');
+    const studentIdInput = sitInModal.querySelector('#studentIdNumber');
+    const studentNameInput = sitInModal.querySelector('#studentName');
+    const studentSessionInput = sitInModal.querySelector('#studentSession');
+    const labRoomInput = sitInModal.querySelector('#labRoom');
+    const sitInPurposeInput = sitInModal.querySelector('#sitInPurpose');
+
     // Populate student data in the modal
-    document.getElementById('studentIdNumber').value = student.id_number;
-    document.getElementById('studentIdNumber').dataset.studentId = student.id;
-    document.getElementById('studentIdNumber').dataset.studentName = `${student.first_name} ${student.last_name}`;
-    document.getElementById('studentIdNumber').dataset.studentCourse = student.course;
-    document.getElementById('studentIdNumber').dataset.studentYear = student.course_level;
-    
+    if (studentIdInput) {
+        studentIdInput.value = student.id_number;
+        studentIdInput.dataset.studentId = student.id;
+        studentIdInput.dataset.studentName = `${student.first_name} ${student.last_name}`;
+        studentIdInput.dataset.studentCourse = student.course;
+        studentIdInput.dataset.studentYear = student.course_level;
+    }
+
     // Populate student name and remaining sessions
-    document.getElementById('studentName').value = `${student.first_name} ${student.last_name}`;
-    document.getElementById('studentSession').value = student.remaining_sessions || 0;
-    
+    if (studentNameInput) {
+        studentNameInput.value = `${student.first_name} ${student.last_name}`;
+    }
+    if (studentSessionInput) {
+        studentSessionInput.value = student.remaining_sessions || 0;
+    }
+
     // Clear lab room and purpose
-    document.getElementById('labRoom').value = '';
-    document.getElementById('sitInPurpose').value = '';
-    
+    if (labRoomInput) labRoomInput.value = '';
+    if (sitInPurposeInput) sitInPurposeInput.value = '';
+
     // Open the sit-in modal
     openSitInModal();
 }
@@ -640,64 +638,6 @@ function closeSitInModal() {
     modal.classList.add('hidden');
     // Reset form
     document.getElementById('adminSitInForm').reset();
-}
-
-// Show student confirmation modal
-function showStudentConfirmModal(student) {
-    const modalHtml = `
-        <div id="studentConfirmModal" class="modal">
-            <div class="modal-content animate__animated animate__fadeInUp" style="max-width: 450px;">
-                <span class="modal-close" onclick="closeStudentConfirmModal()">&times;</span>
-                <div style="text-align: center; margin-bottom: 20px;">
-                    <div style="width: 60px; height: 60px; background: #28a745; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 15px;">
-                        <i class="fas fa-user-check" style="font-size: 30px; color: white;"></i>
-                    </div>
-                    <h2 style="color: #28a745; margin: 0;">Student Found!</h2>
-                </div>
-                <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                        <div style="background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                            <p style="margin: 0 0 5px 0; font-size: 12px; color: #666; text-transform: uppercase;">Name</p>
-                            <p style="margin: 0; font-weight: 600; color: #333;">${escapeHtml(student.first_name)} ${escapeHtml(student.last_name)}</p>
-                        </div>
-                        <div style="background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                            <p style="margin: 0 0 5px 0; font-size: 12px; color: #666; text-transform: uppercase;">ID Number</p>
-                            <p style="margin: 0; font-weight: 600; color: #333;">${escapeHtml(student.id_number)}</p>
-                        </div>
-                        <div style="background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                            <p style="margin: 0 0 5px 0; font-size: 12px; color: #666; text-transform: uppercase;">Course</p>
-                            <p style="margin: 0; font-weight: 600; color: #333;">${escapeHtml(student.course)}</p>
-                        </div>
-                        <div style="background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                            <p style="margin: 0 0 5px 0; font-size: 12px; color: #666; text-transform: uppercase;">Year Level</p>
-                            <p style="margin: 0; font-weight: 600; color: #333;">${student.course_level}</p>
-                        </div>
-                    </div>
-                </div>
-                <p style="text-align: center; color: #666; margin-bottom: 20px;">
-                    <i class="fas fa-info-circle"></i> Please select laboratory and purpose to check in
-                </p>
-                <button class="btn-primary" style="width: 100%; padding: 14px; font-size: 16px;" onclick="closeStudentConfirmModal()">
-                    <i class="fas fa-check"></i> Proceed to Check-in
-                </button>
-            </div>
-        </div>
-    `;
-    
-    // Remove existing modal if any
-    const existingModal = document.getElementById('studentConfirmModal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-    
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-}
-
-function closeStudentConfirmModal() {
-    const modal = document.getElementById('studentConfirmModal');
-    if (modal) {
-        modal.remove();
-    }
 }
 
 // Show check-in success modal
@@ -737,12 +677,12 @@ function showCheckInSuccessModal(student, labRoom, purpose) {
             </div>
         </div>
     `;
-    
+
     const existingModal = document.getElementById('checkInSuccessModal');
     if (existingModal) {
         existingModal.remove();
     }
-    
+
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
@@ -771,12 +711,12 @@ function showErrorModal(title, message) {
             </div>
         </div>
     `;
-    
+
     const existingModal = document.getElementById('errorModal');
     if (existingModal) {
         existingModal.remove();
     }
-    
+
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
@@ -791,7 +731,7 @@ function closeErrorModal() {
 async function selectStudentForSitInFromModal(studentId) {
     try {
         const response = await fetch(`/api/user/${studentId}`);
-        
+
         if (response.ok) {
             const student = await response.json();
             redirectToSitInFormFromModal(student);
@@ -805,7 +745,7 @@ async function selectStudentForSitInFromModal(studentId) {
 async function adminSearch() {
     const query = document.getElementById('adminSearchInput').value;
     if (!query) return;
-    
+
     try {
         const response = await fetch(`/api/admin/search?q=${encodeURIComponent(query)}`);
         if (response.ok) {
@@ -820,12 +760,12 @@ async function adminSearch() {
 function displaySearchResults(results) {
     const container = document.getElementById('searchResults');
     if (!container) return;
-    
+
     if (!results || results.length === 0) {
         container.innerHTML = '<p class="no-data-message">No results found</p>';
         return;
     }
-    
+
     container.innerHTML = results.map(result => `
         <div class="search-result-item">
             <div class="result-info">
@@ -867,12 +807,12 @@ async function loadAdminAnnouncements() {
 function displayDashboardAnnouncements(announcements) {
     const container = document.getElementById('dashboardAnnouncementsList');
     if (!container) return;
-    
+
     if (!announcements || announcements.length === 0) {
         container.innerHTML = '<p class="no-data-message">No announcements yet</p>';
         return;
     }
-    
+
     container.innerHTML = announcements.slice(0, 5).map(announcement => `
         <div class="dashboard-announcement-item ${announcement.priority || 'normal'}">
             <div class="dashboard-announcement-item-header">
@@ -893,12 +833,12 @@ function displayDashboardAnnouncements(announcements) {
 function displayAdminAnnouncements(announcements) {
     const container = document.getElementById('announcementsList');
     if (!container) return;
-    
+
     if (!announcements || announcements.length === 0) {
         container.innerHTML = '<p class="no-data-message">No announcements yet</p>';
         return;
     }
-    
+
     container.innerHTML = announcements.map(announcement => `
         <div class="announcement-item">
             <div class="announcement-item-header">
@@ -928,7 +868,7 @@ async function createAnnouncement(title, content, priority) {
             },
             body: JSON.stringify({ title, content, priority })
         });
-        
+
         if (response.ok) {
             // Reset dashboard form
             const dashboardForm = document.getElementById('createAnnouncementForm');
@@ -957,7 +897,7 @@ async function deleteAnnouncement(id) {
     if (!confirm('Are you sure you want to remove this announcement?')) {
         return;
     }
-    
+
     try {
         const token = localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
         const response = await fetch(`/api/admin/announcements/${id}`, {
@@ -966,7 +906,7 @@ async function deleteAnnouncement(id) {
                 'Authorization': `Bearer ${token}`
             }
         });
-        
+
         if (response.ok) {
             loadAdminAnnouncements();
             alert('Announcement removed successfully!');
@@ -984,11 +924,11 @@ async function deleteAnnouncement(id) {
 function setupAnnouncementForm() {
     const form = document.getElementById('announcementForm');
     if (form) {
-        form.addEventListener('submit', function(e) {
+        form.addEventListener('submit', function (e) {
             e.preventDefault();
             const title = document.getElementById('announcementTitle').value.trim();
             const content = document.getElementById('announcementContent').value.trim();
-            
+
             if (title && content) {
                 createAnnouncement(title, content);
             }
@@ -1018,11 +958,11 @@ function formatDate(dateString) {
 function filterRecords() {
     const date = document.getElementById('filterDate').value;
     const labRoom = document.getElementById('filterLabRoom').value;
-    
+
     let url = '/api/admin/records?';
     if (date) url += `date=${date}&`;
     if (labRoom) url += `lab_room=${labRoom}`;
-    
+
     fetch(url)
         .then(res => res.json())
         .then(records => displayRecords(records))
@@ -1041,80 +981,80 @@ function clearRecordFilters() {
 function displayUserInfo() {
     // Get user role (default to 'student')
     const userRole = currentUser.role || 'student';
-    
+
     // Show/hide navigation based on role
     const studentNav = document.getElementById('studentNav');
     const adminNav = document.getElementById('adminNav');
-    
+
     if (userRole === 'admin') {
         // Show admin navigation, hide student navigation
         if (studentNav) studentNav.style.display = 'none';
         if (adminNav) adminNav.style.display = 'flex';
-        
+
         // Update admin name
         document.getElementById('adminUserName').textContent = currentUser.name || 'Admin';
     } else {
         // Show student navigation, hide admin navigation
         if (studentNav) studentNav.style.display = 'flex';
         if (adminNav) adminNav.style.display = 'none';
-        
+
         // Update student name
         document.getElementById('userName').textContent = currentUser.name || 'Student';
     }
-    
+
     // Update student information card
     document.getElementById('infoName').textContent = currentUser.name || 'Student Name';
     document.getElementById('infoCourse').textContent = currentUser.course || 'Course';
     document.getElementById('infoYear').textContent = getYearLevel(currentUser.course_level);
     document.getElementById('infoAddress').textContent = currentUser.address || 'Not specified';
-    
+
     // Update profile picture display
     updateProfilePictureDisplay();
-    
+
     // Populate edit profile form
     populateEditForm();
 }
 
 function updateProfilePictureDisplay() {
     const profilePicture = currentUser.profile_picture;
-    
+
     // Dashboard student info card
     const displayImg = document.getElementById('profilePictureDisplay');
     const defaultIcon = document.getElementById('defaultAvatarIcon');
-    
+
     // Edit profile section
     const editImg = document.getElementById('editProfilePicture');
     const editDefaultIcon = document.getElementById('editDefaultAvatar');
     const removeBtn = document.getElementById('removePhotoBtn');
-    
+
     console.log('Profile picture path:', profilePicture);
     console.log('Current user:', currentUser);
-    
+
     // Ensure profile picture path has leading slash for absolute path
     let correctPath = profilePicture;
     if (profilePicture && !profilePicture.startsWith('/') && !profilePicture.startsWith('http')) {
         correctPath = '/' + profilePicture;
         console.log('Corrected profile picture path:', correctPath);
     }
-    
+
     if (correctPath) {
         // Show profile picture
         if (displayImg) {
             displayImg.src = correctPath;
             displayImg.style.display = 'block';
             // Add error handling
-            displayImg.onerror = function() {
+            displayImg.onerror = function () {
                 console.error('Failed to load profile picture:', correctPath);
                 this.style.display = 'none';
                 if (defaultIcon) defaultIcon.style.display = 'block';
             };
         }
         if (defaultIcon) defaultIcon.style.display = 'none';
-        
+
         if (editImg) {
             editImg.src = correctPath;
             editImg.style.display = 'block';
-            editImg.onerror = function() {
+            editImg.onerror = function () {
                 console.error('Failed to load edit profile picture:', correctPath);
                 this.style.display = 'none';
                 if (editDefaultIcon) editDefaultIcon.style.display = 'block';
@@ -1129,7 +1069,7 @@ function updateProfilePictureDisplay() {
             displayImg.src = '';
         }
         if (defaultIcon) defaultIcon.style.display = 'block';
-        
+
         if (editImg) {
             editImg.style.display = 'none';
             editImg.src = '';
@@ -1155,17 +1095,17 @@ function getYearLevel(level) {
 function showSection(sectionName) {
     // Get user role
     const userRole = currentUser.role || 'student';
-    
+
     // Hide all sections
     const sections = document.querySelectorAll('.content-section');
     sections.forEach(section => section.classList.add('hidden'));
-    
+
     // Remove active class from all nav links (skip Home link which is index 0)
     const navLinks = document.querySelectorAll('.nav-link');
     navLinks.forEach(link => link.classList.remove('active'));
-    
+
     // Show selected section and activate nav link
-    switch(sectionName) {
+    switch (sectionName) {
         case 'dashboard':
         case 'adminDashboard':
             if (userRole === 'admin') {
@@ -1250,14 +1190,14 @@ function activateAdminNavLink(index) {
 // =============================================
 async function loadSitInHistory() {
     showLoading(true);
-    
+
     try {
         const response = await fetch(`/api/sitin/records/user/${currentUser.id}`);
-        
+
         if (response.ok) {
             const data = await response.json();
             allHistoryData = data.records || data;
-            
+
             // Update sessions remaining
             updateSessionsRemaining(allHistoryData);
         } else {
@@ -1266,19 +1206,19 @@ async function loadSitInHistory() {
     } catch (error) {
         console.error('Error loading history:', error);
     }
-    
+
     showLoading(false);
 }
 
 function updateSessionsRemaining(records) {
     if (!records || !records.length) return;
-    
+
     const totalSitins = records.length;
-    
+
     // Calculate remaining sessions (assuming 30 max sessions per semester)
     const maxSessions = 30;
     const sessionsRemaining = Math.max(0, maxSessions - totalSitins);
-    
+
     const sessionsElement = document.getElementById('infoSessionsRemaining');
     if (sessionsElement) {
         sessionsElement.textContent = sessionsRemaining;
@@ -1288,15 +1228,15 @@ function updateSessionsRemaining(records) {
 function displayFullHistory() {
     const tableBody = document.getElementById('fullHistoryTableBody');
     const noHistoryMsg = document.getElementById('noFullHistoryMessage');
-    
+
     if (!allHistoryData || allHistoryData.length === 0) {
         tableBody.innerHTML = '';
         noHistoryMsg.style.display = 'block';
         return;
     }
-    
+
     noHistoryMsg.style.display = 'none';
-    
+
     tableBody.innerHTML = allHistoryData.map(record => `
         <tr>
             <td>${formatDate(record.date)}</td>
@@ -1312,9 +1252,9 @@ function displayFullHistory() {
 function filterHistory() {
     const monthFilter = document.getElementById('filterMonth').value;
     const labFilter = document.getElementById('filterLab').value;
-    
+
     let filteredData = [...allHistoryData];
-    
+
     if (monthFilter) {
         filteredData = filteredData.filter(record => {
             const recordDate = new Date(record.date);
@@ -1322,16 +1262,16 @@ function filterHistory() {
             return recordMonth === monthFilter;
         });
     }
-    
+
     if (labFilter) {
-        filteredData = filteredData.filter(record => 
+        filteredData = filteredData.filter(record =>
             record.lab_room === labFilter
         );
     }
-    
+
     const tableBody = document.getElementById('fullHistoryTableBody');
     const noHistoryMsg = document.getElementById('noFullHistoryMessage');
-    
+
     if (filteredData.length === 0) {
         tableBody.innerHTML = '';
         noHistoryMsg.style.display = 'block';
@@ -1361,63 +1301,63 @@ function clearFilters() {
 // =============================================
 async function handleProfilePictureChange(event) {
     const file = event.target.files[0];
-    
+
     if (!file) return;
-    
+
     console.log('Uploading file:', file.name, file.size, file.type);
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
     if (!allowedTypes.includes(file.type)) {
         showMessage('Only image files (JPG, PNG, GIF) are allowed!', 'error');
         return;
     }
-    
+
     // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
         showMessage('File size must be less than 5MB!', 'error');
         return;
     }
-    
+
     // Show preview immediately
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = function (e) {
         const editImg = document.getElementById('editProfilePicture');
         const editDefaultIcon = document.getElementById('editDefaultAvatar');
         const removeBtn = document.getElementById('removePhotoBtn');
-        
+
         editImg.src = e.target.result;
         editImg.style.display = 'block';
         editDefaultIcon.style.display = 'none';
         removeBtn.style.display = 'inline-flex';
     };
     reader.readAsDataURL(file);
-    
+
     // Upload to server
     showLoading(true);
-    
+
     try {
         const formData = new FormData();
         formData.append('profilePicture', file);
-        
+
         const response = await fetch(`/api/user/${currentUser.id}/profile-picture`, {
             method: 'POST',
             body: formData
         });
-        
+
         console.log('Response status:', response.status);
-        
+
         const data = await response.json();
         console.log('Response data:', data);
-        
+
         if (response.ok) {
             // Update current user data
             currentUser.profile_picture = data.profile_picture;
             localStorage.setItem('user', JSON.stringify(currentUser));
-            
+
             console.log('Profile picture updated to:', data.profile_picture);
-            
+
             // Update all profile picture displays
             updateProfilePictureDisplay();
-            
+
             showMessage('Profile picture updated successfully!', 'success');
         } else {
             showMessage(data.error || 'Failed to upload profile picture', 'error');
@@ -1430,9 +1370,9 @@ async function handleProfilePictureChange(event) {
         // Revert preview on error
         updateProfilePictureDisplay();
     }
-    
+
     showLoading(false);
-    
+
     // Clear the input so the same file can be selected again
     event.target.value = '';
 }
@@ -1441,9 +1381,9 @@ async function removeProfilePicture() {
     if (!confirm('Are you sure you want to remove your profile picture?')) {
         return;
     }
-    
+
     showLoading(true);
-    
+
     try {
         // Update user with null profile picture
         const response = await fetch(`/api/user/${currentUser.id}`, {
@@ -1462,7 +1402,7 @@ async function removeProfilePicture() {
                 remove_profile_picture: true
             })
         });
-        
+
         if (response.ok) {
             currentUser.profile_picture = null;
             localStorage.setItem('user', JSON.stringify(currentUser));
@@ -1476,7 +1416,7 @@ async function removeProfilePicture() {
         console.error('Error removing profile picture:', error);
         showMessage('An error occurred', 'error');
     }
-    
+
     showLoading(false);
 }
 
@@ -1486,7 +1426,7 @@ async function removeProfilePicture() {
 async function loadNotifications() {
     try {
         const response = await fetch(`/api/notifications/${currentUser.id}`);
-        
+
         if (response.ok) {
             notifications = await response.json();
             displayNotificationCount();
@@ -1525,7 +1465,7 @@ function loadMockNotifications() {
             read: true
         }
     ];
-    
+
     displayNotificationCount();
     displayNotificationList();
 }
@@ -1539,15 +1479,15 @@ function displayNotificationCount() {
 
 function displayNotificationList() {
     const listElement = document.getElementById('notificationList');
-    
+
     if (notifications.length === 0) {
         listElement.innerHTML = '<p class="no-notifications">No notifications</p>';
         return;
     }
-    
+
     // Show only 5 most recent notifications
     const recentNotifications = notifications.slice(0, 5);
-    
+
     listElement.innerHTML = recentNotifications.map(notification => `
         <div class="notification-item ${notification.read ? '' : 'unread'}" 
              onclick="markAsRead(${notification.id})">
@@ -1560,12 +1500,12 @@ function displayNotificationList() {
 
 function displayAllNotifications() {
     const listElement = document.getElementById('notificationsListFull');
-    
+
     if (notifications.length === 0) {
         listElement.innerHTML = '<p class="no-notifications">No notifications</p>';
         return;
     }
-    
+
     listElement.innerHTML = notifications.map(notification => `
         <div class="notification-item-full ${notification.read ? '' : 'unread'}"
              onclick="markAsRead(${notification.id})">
@@ -1587,7 +1527,7 @@ function markAsRead(notificationId) {
         notification.read = true;
         displayNotificationCount();
         displayNotificationList();
-        
+
         // Update on server
         updateNotificationOnServer(notificationId);
     }
@@ -1626,7 +1566,7 @@ function clearAllNotifications() {
 async function loadAnnouncements() {
     try {
         const response = await fetch('/api/announcements');
-        
+
         if (response.ok) {
             const announcements = await response.json();
             displayAnnouncements(announcements);
@@ -1667,20 +1607,20 @@ function loadMockAnnouncements() {
             date: '2026-03-10'
         }
     ];
-    
+
     displayAnnouncements(announcements);
 }
 
 function displayAnnouncements(announcements) {
     const listElement = document.getElementById('announcementList');
     const adminListElement = document.getElementById('adminAnnouncementList');
-    
+
     if (!announcements || announcements.length === 0) {
         if (listElement) listElement.innerHTML = '<p class="no-data-message">No announcements available.</p>';
         if (adminListElement) adminListElement.innerHTML = '<p class="no-data-message">No announcements available.</p>';
         return;
     }
-    
+
     const html = announcements.map(announcement => `
         <div class="announcement-item">
             <h4>${escapeHtml(announcement.title)}</h4>
@@ -1688,7 +1628,7 @@ function displayAnnouncements(announcements) {
             <span class="announcement-date">${formatDate(announcement.created_at)}</span>
         </div>
     `).join('');
-    
+
     if (listElement) listElement.innerHTML = html;
     if (adminListElement) adminListElement.innerHTML = html;
 }
@@ -1708,7 +1648,7 @@ function populateEditForm() {
 
 async function handleEditProfile(event) {
     event.preventDefault();
-    
+
     const formData = {
         first_name: document.getElementById('editFirstName').value,
         last_name: document.getElementById('editLastName').value,
@@ -1720,9 +1660,9 @@ async function handleEditProfile(event) {
         current_password: document.getElementById('currentPassword').value,
         new_password: document.getElementById('newPassword').value
     };
-    
+
     showLoading(true);
-    
+
     try {
         const response = await fetch(`/api/user/${currentUser.id}`, {
             method: 'PUT',
@@ -1731,9 +1671,9 @@ async function handleEditProfile(event) {
             },
             body: JSON.stringify(formData)
         });
-        
+
         const data = await response.json();
-        
+
         if (response.ok) {
             // Update local storage
             currentUser.first_name = formData.first_name;
@@ -1742,14 +1682,14 @@ async function handleEditProfile(event) {
             currentUser.email = formData.email;
             currentUser.course = formData.course;
             currentUser.course_level = formData.course_level;
-            
+
             localStorage.setItem('user', JSON.stringify(currentUser));
-            
+
             // Update display
             displayUserInfo();
-            
+
             showMessage('Profile updated successfully!', 'success');
-            
+
             // Clear password fields
             document.getElementById('currentPassword').value = '';
             document.getElementById('newPassword').value = '';
@@ -1760,7 +1700,7 @@ async function handleEditProfile(event) {
         console.error('Error updating profile:', error);
         showMessage('An error occurred. Please try again.', 'error');
     }
-    
+
     showLoading(false);
 }
 
@@ -1776,7 +1716,7 @@ function showMessage(message, type) {
     const messageDiv = document.getElementById('profileMessage');
     messageDiv.textContent = message;
     messageDiv.className = `message-container ${type}`;
-    
+
     // Auto-hide after 5 seconds
     setTimeout(() => {
         messageDiv.className = 'message-container';
@@ -1791,9 +1731,9 @@ async function handleLogout() {
     if (!confirm('Are you sure you want to logout?')) {
         return;
     }
-    
+
     showLoading(true);
-    
+
     try {
         const response = await fetch('/api/logout', {
             method: 'POST',
@@ -1802,11 +1742,11 @@ async function handleLogout() {
             },
             body: JSON.stringify({ session_token: sessionToken })
         });
-        
+
         if (response.ok) {
             // Clear session token from local storage
             localStorage.removeItem('session_token');
-            
+
             // Redirect to login page
             window.location.href = 'login.html';
         } else {
@@ -1821,7 +1761,7 @@ async function handleLogout() {
         localStorage.removeItem('session_token');
         window.location.href = 'login.html';
     }
-    
+
     showLoading(false);
 }
 
@@ -1834,48 +1774,48 @@ function setupEventListeners() {
     if (editForm) {
         editForm.addEventListener('submit', handleEditProfile);
     }
-    
+
     // Admin sit-in form submission
     const adminSitInForm = document.getElementById('adminSitInForm');
     if (adminSitInForm) {
         // Add listener to student ID to enable session editing when manually changed
         const studentIdInput = document.getElementById('studentIdNumber');
         if (studentIdInput) {
-            studentIdInput.addEventListener('input', function() {
+            studentIdInput.addEventListener('input', function () {
                 document.getElementById('studentSession').readOnly = false;
                 document.getElementById('studentName').value = '';
                 document.getElementById('studentSession').value = '';
             });
         }
-        
-        adminSitInForm.addEventListener('submit', async function(e) {
+
+        adminSitInForm.addEventListener('submit', async function (e) {
             e.preventDefault();
-            
+
             const studentIdNumber = document.getElementById('studentIdNumber').value.trim();
             const studentName = document.getElementById('studentName').value.trim();
             const studentSession = document.getElementById('studentSession').value.trim();
             const labRoom = document.getElementById('labRoom').value;
             const purpose = document.getElementById('sitInPurpose').value;
-            
+
             if (!studentIdNumber || !labRoom || !purpose) {
                 showErrorModal('Missing Fields', 'Please fill in all fields');
                 return;
             }
-            
+
             // First, get the student by ID number
             try {
                 const searchResponse = await fetch(`/api/admin/student/${encodeURIComponent(studentIdNumber)}`);
-                
+
                 let student;
                 if (searchResponse.ok) {
                     student = await searchResponse.json();
                 }
-                
+
                 // If student exists, update their remaining sessions if changed
                 if (student) {
                     const newSessions = parseInt(studentSession, 10);
                     const currentSessions = student.remaining_sessions || 0;
-                    
+
                     // Only update if sessions have changed
                     if (!isNaN(newSessions) && newSessions >= 0 && newSessions !== currentSessions) {
                         await fetch(`/api/admin/students/${student.id}/sessions`, {
@@ -1887,12 +1827,12 @@ function setupEventListeners() {
                         });
                     }
                 }
-                
+
                 if (!searchResponse.ok) {
                     showErrorModal('Student Not Found', 'Please search for the student first.');
                     return;
                 }
-                
+
                 // Now create the sit-in record
                 const checkInResponse = await fetch('/api/sitin/checkin', {
                     method: 'POST',
@@ -1905,11 +1845,14 @@ function setupEventListeners() {
                         purpose: purpose
                     })
                 });
-                
+
                 if (checkInResponse.ok) {
                     const result = await checkInResponse.json();
                     showCheckInSuccessModal(student, labRoom, purpose);
-                    
+
+                    // Refresh sit-in records table if on view records section
+                    loadAllRecords();
+
                     // Close modal and reset form
                     closeSitInModal();
                 } else {
@@ -1922,27 +1865,27 @@ function setupEventListeners() {
             }
         });
     }
-    
+
     // Dashboard announcement form submission
     const createAnnouncementForm = document.getElementById('createAnnouncementForm');
     if (createAnnouncementForm) {
-        createAnnouncementForm.addEventListener('submit', function(e) {
+        createAnnouncementForm.addEventListener('submit', function (e) {
             e.preventDefault();
             const title = document.getElementById('announcementTitle').value.trim();
             const content = document.getElementById('announcementContent').value.trim();
             const priority = document.getElementById('announcementPriority').value;
-            
+
             if (title && content) {
                 createAnnouncement(title, content, priority);
             }
         });
     }
-    
+
     // Close notification panel when clicking outside
-    document.addEventListener('click', function(event) {
+    document.addEventListener('click', function (event) {
         const panel = document.getElementById('notificationPanel');
         const bell = document.querySelector('.notification-bell');
-        
+
         if (!panel.contains(event.target) && !bell.contains(event.target)) {
             panel.classList.remove('show');
         }
@@ -1999,26 +1942,26 @@ function formatDateTime(dateTimeString) {
 function calculateDuration(timeIn, timeOut) {
     if (!timeIn) return 'N/A';
     if (!timeOut) return 'In Progress';
-    
+
     // Parse times
     let inTime, outTime;
-    
+
     if (timeIn.includes('T') || timeIn.includes(' ')) {
         inTime = new Date(timeIn);
     } else {
         inTime = new Date(`2000-01-01T${timeIn}`);
     }
-    
+
     if (timeOut.includes('T') || timeOut.includes(' ')) {
         outTime = new Date(timeOut);
     } else {
         outTime = new Date(`2000-01-01T${timeOut}`);
     }
-    
+
     const diffMs = outTime - inTime;
     const diffHrs = Math.floor(diffMs / 3600000);
     const diffMins = Math.floor((diffMs % 3600000) / 60000);
-    
+
     if (diffHrs > 0) {
         return `${diffHrs}h ${diffMins}m`;
     }
