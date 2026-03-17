@@ -53,24 +53,1014 @@ async function validateSession() {
 }
 
 function initializeDashboard() {
+    // Get user role
+    const userRole = currentUser.role || 'student';
+    
     // Display user information
     displayUserInfo();
     
-    // Load dashboard data
-    loadSitInHistory();
-    loadNotifications();
-    loadAnnouncements();
+    if (userRole === 'admin') {
+        // Show admin dashboard directly
+        showSection('adminDashboard');
+        // Load admin dashboard data
+        loadAdminStats();
+        loadAdminAnnouncements();
+    } else {
+        // Show student dashboard
+        showSection('dashboard');
+        // Load student dashboard data
+        loadSitInHistory();
+        loadNotifications();
+        loadAnnouncements();
+    }
     
     // Setup event listeners
     setupEventListeners();
 }
 
 // =============================================
+// Admin Functions
+// =============================================
+async function loadAdminStats() {
+    try {
+        const response = await fetch('/api/admin/stats');
+        if (response.ok) {
+            const stats = await response.json();
+            document.getElementById('totalStudents').textContent = stats.totalStudents || 0;
+            document.getElementById('activeSitins').textContent = stats.activeSitins || 0;
+            document.getElementById('todayReservations').textContent = stats.todayReservations || 0;
+            document.getElementById('totalFeedbacks').textContent = '0';
+        }
+    } catch (error) {
+        console.error('Error loading admin stats:', error);
+    }
+}
+
+async function loadAllStudents() {
+    try {
+        const response = await fetch('/api/admin/students');
+        if (response.ok) {
+            const students = await response.json();
+            displayStudents(students);
+        }
+    } catch (error) {
+        console.error('Error loading students:', error);
+    }
+}
+
+function displayStudents(students) {
+    const tbody = document.getElementById('studentsTableBody');
+    if (!tbody) return;
+    
+    if (!students || students.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7">No students found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = students.map(student => `
+        <tr>
+            <td>${student.id_number}</td>
+            <td>${student.first_name} ${student.last_name}</td>
+            <td>${student.course}</td>
+            <td>${student.course_level}</td>
+            <td>${student.email}</td>
+            <td>
+                <span id="sessions-display-${student.id}">${student.remaining_sessions || 0}</span>
+            </td>
+            <td>
+                <button class="btn-icon" onclick="editStudentSessions(${student.id}, ${student.remaining_sessions || 0})" title="Edit Sessions">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn-icon" onclick="viewStudent(${student.id})" title="View">
+                    <i class="fas fa-eye"></i>
+                </button>
+                <button class="btn-icon btn-danger" onclick="deleteStudent(${student.id}, '${student.first_name} ${student.last_name}')" title="Delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function loadAllRecords() {
+    try {
+        const response = await fetch('/api/admin/records');
+        if (response.ok) {
+            const records = await response.json();
+            displayRecords(records);
+        }
+    } catch (error) {
+        console.error('Error loading records:', error);
+    }
+}
+
+function displayRecords(records) {
+    const tbody = document.getElementById('recordsTableBody');
+    if (!tbody) return;
+    
+    if (!records || records.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8">No records found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = records.map(record => {
+        const duration = record.time_out ? calculateDuration(record.time_in, record.time_out) : 'Active';
+        return `
+            <tr>
+                <td>${record.date}</td>
+                <td>${record.id_number}</td>
+                <td>${record.first_name} ${record.last_name}</td>
+                <td>${record.lab_room}</td>
+                <td>${record.purpose}</td>
+                <td>${record.time_in}</td>
+                <td>${record.time_out || 'Active'}</td>
+                <td>${duration}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function calculateDuration(timeIn, timeOut) {
+    const [inH, inM] = timeIn.split(':').map(Number);
+    const [outH, outM] = timeOut.split(':').map(Number);
+    const diffMinutes = (outH * 60 + outM) - (inH * 60 + inM);
+    const hours = Math.floor(diffMinutes / 60);
+    const minutes = diffMinutes % 60;
+    return `${hours}h ${minutes}m`;
+}
+
+async function loadFeedbacks() {
+    try {
+        const response = await fetch('/api/admin/feedbacks');
+        if (response.ok) {
+            const feedbacks = await response.json();
+            displayFeedbacks(feedbacks);
+            document.getElementById('totalFeedbacks').textContent = feedbacks.length || 0;
+        }
+    } catch (error) {
+        console.error('Error loading feedbacks:', error);
+    }
+}
+
+function displayFeedbacks(feedbacks) {
+    const tbody = document.getElementById('feedbacksTableBody');
+    if (!tbody) return;
+    
+    if (!feedbacks || feedbacks.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5">No feedbacks found</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = feedbacks.map(feedback => `
+        <tr>
+            <td>${feedback.created_at}</td>
+            <td>${feedback.first_name} ${feedback.last_name}</td>
+            <td>${feedback.rating || 'N/A'}</td>
+            <td>${feedback.comment || 'No comment'}</td>
+            <td>
+                <button class="btn-icon">
+                    <i class="fas fa-reply"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Search student by ID number or name (admin)
+async function adminSearchStudent() {
+    const query = document.getElementById('adminSearchInput').value.trim();
+    if (!query) {
+        alert('Please enter a student ID number or name');
+        return;
+    }
+    
+    const searchResults = document.getElementById('searchResults');
+    const studentInfoForm = document.getElementById('studentInfoForm');
+    
+    try {
+        const response = await fetch(`/api/admin/students/search?q=${encodeURIComponent(query)}`);
+        
+        if (response.ok) {
+            const students = await response.json();
+            
+            if (students.length === 0) {
+                studentInfoForm.style.display = 'none';
+                searchResults.innerHTML = '<p class="no-data-message">No student found with that ID number or name</p>';
+            } else if (students.length === 1) {
+                // Single result - redirect to sit-in form with student info
+                const student = students[0];
+                redirectToSitInForm(student);
+            } else {
+                // Multiple results - show list
+                studentInfoForm.style.display = 'none';
+                displaySearchResultsListWithSitIn(students);
+            }
+        } else if (response.status === 404) {
+            studentInfoForm.style.display = 'none';
+            searchResults.innerHTML = '<p class="no-data-message">No student found with that ID number or name</p>';
+        } else {
+            throw new Error('Search failed');
+        }
+    } catch (error) {
+        console.error('Error searching:', error);
+        studentInfoForm.style.display = 'none';
+        searchResults.innerHTML = '<p class="no-data-message">Error searching for student</p>';
+    }
+}
+
+// Redirect to sit-in form with student pre-filled
+function redirectToSitInForm(student) {
+    // Hide search results
+    document.getElementById('searchResults').innerHTML = '';
+    document.getElementById('studentInfoForm').style.display = 'none';
+    
+    // Show sit-in section
+    showSection('sitIn');
+    
+    // Pre-fill student ID
+    document.getElementById('studentIdNumber').value = student.id_number;
+    
+    // Also store student info in hidden fields for later use
+    document.getElementById('studentIdNumber').dataset.studentId = student.id;
+    document.getElementById('studentIdNumber').dataset.studentName = `${student.first_name} ${student.last_name}`;
+    document.getElementById('studentIdNumber').dataset.studentCourse = student.course;
+    document.getElementById('studentIdNumber').dataset.studentYear = student.course_level;
+    
+    // Clear previous selections
+    document.getElementById('labRoom').value = '';
+    document.getElementById('sitInPurpose').value = '';
+    
+    // Show confirmation modal
+    showStudentConfirmModal(student);
+}
+
+// Display search results list with option to go to sit-in
+function displaySearchResultsListWithSitIn(students) {
+    const searchResults = document.getElementById('searchResults');
+    searchResults.innerHTML = students.map(student => `
+        <div class="search-result-item" onclick="selectStudentForSitIn(${student.id})">
+            <div class="search-result-info">
+                <strong>${escapeHtml(student.first_name)} ${escapeHtml(student.last_name)}</strong>
+                <span>ID: ${escapeHtml(student.id_number)}</span>
+                <span>${escapeHtml(student.course)} - ${student.course_level} Year</span>
+            </div>
+            <button class="btn-primary btn-small">
+                <i class="fas fa-sign-in-alt"></i> Check In
+            </button>
+        </div>
+    `).join('');
+}
+
+// Select a student from search results for sit-in
+async function selectStudentForSitIn(studentId) {
+    try {
+        const response = await fetch(`/api/user/${studentId}`);
+        
+        if (response.ok) {
+            const student = await response.json();
+            redirectToSitInForm(student);
+        }
+    } catch (error) {
+        console.error('Error loading student:', error);
+    }
+}
+
+// Display list of search results
+function displaySearchResultsList(students) {
+    const searchResults = document.getElementById('searchResults');
+    searchResults.innerHTML = students.map(student => `
+        <div class="search-result-item" onclick="selectStudent(${student.id})">
+            <div class="search-result-info">
+                <strong>${escapeHtml(student.first_name)} ${escapeHtml(student.last_name)}</strong>
+                <span>ID: ${escapeHtml(student.id_number)}</span>
+                <span>${escapeHtml(student.course)} - ${student.course_level} Year</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Select a student from search results
+async function selectStudent(studentId) {
+    const token = localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
+    
+    try {
+        const response = await fetch(`/api/user/${studentId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            const student = await response.json();
+            displayStudentInfo(student);
+            document.getElementById('searchResults').innerHTML = '';
+            document.getElementById('studentInfoForm').style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error loading student:', error);
+    }
+}
+
+function displayStudentInfo(student) {
+    document.getElementById('studentIdNumber').textContent = student.id_number;
+    document.getElementById('studentName').textContent = `${student.first_name} ${student.middle_name || ''} ${student.last_name}`.trim();
+    document.getElementById('studentCourse').textContent = student.course || 'N/A';
+    document.getElementById('studentYear').textContent = student.course_level ? `${student.course_level} Year` : 'N/A';
+    document.getElementById('studentEmail').textContent = student.email || 'N/A';
+    document.getElementById('studentStatus').textContent = student.is_active ? 'Active' : 'Inactive';
+    document.getElementById('studentStatus').style.color = student.is_active ? '#28a745' : '#dc3545';
+}
+
+function closeStudentInfo() {
+    document.getElementById('studentInfoForm').style.display = 'none';
+    document.getElementById('adminSearchInput').value = '';
+}
+
+// =============================================
+// Search Modal Functions
+// =============================================
+function openSearchModal() {
+    const modal = document.getElementById('searchModal');
+    modal.classList.remove('hidden');
+    document.getElementById('modalSearchInput').value = '';
+    document.getElementById('modalSearchResults').innerHTML = '';
+    document.getElementById('modalSearchInput').focus();
+    
+    // Add enter key listener
+    document.getElementById('modalSearchInput').onkeypress = function(e) {
+        if (e.key === 'Enter') {
+            modalSearchStudent();
+        }
+    };
+}
+
+function closeSearchModal() {
+    const modal = document.getElementById('searchModal');
+    modal.classList.add('hidden');
+}
+
+// =============================================
+// Student Management Functions
+// =============================================
+function showAddStudentForm() {
+    const modal = document.getElementById('addStudentModal');
+    modal.classList.remove('hidden');
+}
+
+function closeAddStudentModal() {
+    const modal = document.getElementById('addStudentModal');
+    modal.classList.add('hidden');
+    document.getElementById('addStudentForm').reset();
+}
+
+async function submitAddStudent(event) {
+    event.preventDefault();
+    
+    const studentData = {
+        id_number: document.getElementById('newStudentId').value.trim(),
+        first_name: document.getElementById('newStudentFirstName').value.trim(),
+        last_name: document.getElementById('newStudentLastName').value.trim(),
+        middle_name: document.getElementById('newStudentMiddleName').value.trim(),
+        email: document.getElementById('newStudentEmail').value.trim(),
+        course: document.getElementById('newStudentCourse').value,
+        course_level: parseInt(document.getElementById('newStudentYear').value),
+        address: document.getElementById('newStudentAddress').value.trim(),
+        password: document.getElementById('newStudentPassword').value,
+        remaining_sessions: parseInt(document.getElementById('newStudentSessions').value) || 30
+    };
+    
+    try {
+        const response = await fetch('/api/admin/students', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(studentData)
+        });
+        
+        if (response.ok) {
+            showSuccessModal('Student Added', `${studentData.first_name} ${studentData.last_name} has been added successfully!`);
+            closeAddStudentModal();
+            loadAllStudents(); // Refresh the table
+        } else {
+            const error = await response.json();
+            showErrorModal('Error', error.error || 'Failed to add student');
+        }
+    } catch (error) {
+        console.error('Error adding student:', error);
+        showErrorModal('Error', 'An error occurred while adding student');
+    }
+}
+
+async function deleteStudent(studentId, studentName) {
+    if (!confirm(`Are you sure you want to delete student: ${studentName}?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/admin/students/${studentId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            showSuccessModal('Student Deleted', `${studentName} has been deleted successfully!`);
+            loadAllStudents(); // Refresh the table
+        } else {
+            const error = await response.json();
+            showErrorModal('Error', error.error || 'Failed to delete student');
+        }
+    } catch (error) {
+        console.error('Error deleting student:', error);
+        showErrorModal('Error', 'An error occurred while deleting student');
+    }
+}
+
+// Edit student remaining sessions
+function editStudentSessions(studentId, currentSessions) {
+    const newSessions = prompt(`Enter new remaining sessions for student (current: ${currentSessions}):`, currentSessions);
+    
+    if (newSessions === null || newSessions === '') {
+        return;
+    }
+    
+    const sessions = parseInt(newSessions, 10);
+    
+    if (isNaN(sessions) || sessions < 0) {
+        showErrorModal('Invalid Value', 'Please enter a valid positive number');
+        return;
+    }
+    
+    updateStudentSessions(studentId, sessions);
+}
+
+async function updateStudentSessions(studentId, sessions) {
+    try {
+        const response = await fetch(`/api/admin/students/${studentId}/sessions`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ remaining_sessions: sessions })
+        });
+        
+        if (response.ok) {
+            showSuccessModal('Sessions Updated', `Student's remaining sessions have been updated to ${sessions}!`);
+            loadAllStudents(); // Refresh the table
+        } else {
+            const error = await response.json();
+            showErrorModal('Error', error.error || 'Failed to update remaining sessions');
+        }
+    } catch (error) {
+        console.error('Error updating sessions:', error);
+        showErrorModal('Error', 'An error occurred while updating sessions');
+    }
+}
+
+// Show success modal
+function showSuccessModal(title, message) {
+    const modalHtml = `
+        <div id="successModal" class="modal">
+            <div class="modal-content animate__animated animate__fadeInUp" style="max-width: 400px; text-align: center;">
+                <div style="text-align: center; margin-bottom: 15px;">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);">
+                        <i class="fas fa-check" style="font-size: 30px; color: white;"></i>
+                    </div>
+                </div>
+                <h2 style="color: #28a745; margin: 0 0 15px 0;">${escapeHtml(title)}</h2>
+                <p style="color: #666; margin-bottom: 20px;">${escapeHtml(message)}</p>
+                <button class="btn-primary" style="width: 100%; padding: 12px; font-size: 16px;" onclick="closeSuccessModal()">
+                    <i class="fas fa-check"></i> OK
+                </button>
+            </div>
+        </div>
+    `;
+    
+    const existingModal = document.getElementById('successModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function closeSuccessModal() {
+    const modal = document.getElementById('successModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Search student from modal
+async function modalSearchStudent() {
+    const query = document.getElementById('modalSearchInput').value.trim();
+    if (!query) {
+        alert('Please enter a student ID number or name');
+        return;
+    }
+    
+    const resultsContainer = document.getElementById('modalSearchResults');
+    
+    try {
+        const response = await fetch(`/api/admin/students/search?q=${encodeURIComponent(query)}`);
+        
+        if (response.ok) {
+            const students = await response.json();
+            
+            if (students.length === 0) {
+                resultsContainer.innerHTML = '<p class="no-data-message">No student found with that ID number or name</p>';
+            } else if (students.length === 1) {
+                // Single result - redirect to sit-in form
+                const student = students[0];
+                redirectToSitInFormFromModal(student);
+            } else {
+                // Multiple results - show list
+                displayModalSearchResults(students);
+            }
+        } else if (response.status === 404) {
+            resultsContainer.innerHTML = '<p class="no-data-message">No student found with that ID number or name</p>';
+        } else {
+            throw new Error('Search failed');
+        }
+    } catch (error) {
+        console.error('Error searching:', error);
+        resultsContainer.innerHTML = '<p class="no-data-message">Error searching for student</p>';
+    }
+}
+
+// Display search results in modal
+function displayModalSearchResults(students) {
+    const resultsContainer = document.getElementById('modalSearchResults');
+    resultsContainer.innerHTML = students.map(student => `
+        <div class="modal-search-result-item" onclick="selectStudentForSitInFromModal(${student.id})">
+            <div class="result-info">
+                <strong>${escapeHtml(student.first_name)} ${escapeHtml(student.last_name)}</strong>
+                <span>ID: ${escapeHtml(student.id_number)}</span>
+                <span>${escapeHtml(student.course)} - ${student.course_level} Year</span>
+                <span>Sessions: ${student.remaining_sessions || 0}</span>
+            </div>
+            <button class="btn-primary btn-small">
+                <i class="fas fa-sign-in-alt"></i> Check In
+            </button>
+        </div>
+    `).join('');
+}
+
+// Redirect to sit-in form from modal
+function redirectToSitInFormFromModal(student) {
+    closeSearchModal();
+    
+    // Populate student data in the modal
+    document.getElementById('studentIdNumber').value = student.id_number;
+    document.getElementById('studentIdNumber').dataset.studentId = student.id;
+    document.getElementById('studentIdNumber').dataset.studentName = `${student.first_name} ${student.last_name}`;
+    document.getElementById('studentIdNumber').dataset.studentCourse = student.course;
+    document.getElementById('studentIdNumber').dataset.studentYear = student.course_level;
+    
+    // Populate student name and remaining sessions
+    document.getElementById('studentName').value = `${student.first_name} ${student.last_name}`;
+    document.getElementById('studentSession').value = student.remaining_sessions || 0;
+    
+    // Clear lab room and purpose
+    document.getElementById('labRoom').value = '';
+    document.getElementById('sitInPurpose').value = '';
+    
+    // Open the sit-in modal
+    openSitInModal();
+}
+
+// Open sit-in modal
+function openSitInModal() {
+    const modal = document.getElementById('sitInModal');
+    modal.classList.remove('hidden');
+}
+
+// Close sit-in modal
+function closeSitInModal() {
+    const modal = document.getElementById('sitInModal');
+    modal.classList.add('hidden');
+    // Reset form
+    document.getElementById('adminSitInForm').reset();
+}
+
+// Show student confirmation modal
+function showStudentConfirmModal(student) {
+    const modalHtml = `
+        <div id="studentConfirmModal" class="modal">
+            <div class="modal-content animate__animated animate__fadeInUp" style="max-width: 450px;">
+                <span class="modal-close" onclick="closeStudentConfirmModal()">&times;</span>
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div style="width: 60px; height: 60px; background: #28a745; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 15px;">
+                        <i class="fas fa-user-check" style="font-size: 30px; color: white;"></i>
+                    </div>
+                    <h2 style="color: #28a745; margin: 0;">Student Found!</h2>
+                </div>
+                <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div style="background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <p style="margin: 0 0 5px 0; font-size: 12px; color: #666; text-transform: uppercase;">Name</p>
+                            <p style="margin: 0; font-weight: 600; color: #333;">${escapeHtml(student.first_name)} ${escapeHtml(student.last_name)}</p>
+                        </div>
+                        <div style="background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <p style="margin: 0 0 5px 0; font-size: 12px; color: #666; text-transform: uppercase;">ID Number</p>
+                            <p style="margin: 0; font-weight: 600; color: #333;">${escapeHtml(student.id_number)}</p>
+                        </div>
+                        <div style="background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <p style="margin: 0 0 5px 0; font-size: 12px; color: #666; text-transform: uppercase;">Course</p>
+                            <p style="margin: 0; font-weight: 600; color: #333;">${escapeHtml(student.course)}</p>
+                        </div>
+                        <div style="background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <p style="margin: 0 0 5px 0; font-size: 12px; color: #666; text-transform: uppercase;">Year Level</p>
+                            <p style="margin: 0; font-weight: 600; color: #333;">${student.course_level}</p>
+                        </div>
+                    </div>
+                </div>
+                <p style="text-align: center; color: #666; margin-bottom: 20px;">
+                    <i class="fas fa-info-circle"></i> Please select laboratory and purpose to check in
+                </p>
+                <button class="btn-primary" style="width: 100%; padding: 14px; font-size: 16px;" onclick="closeStudentConfirmModal()">
+                    <i class="fas fa-check"></i> Proceed to Check-in
+                </button>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('studentConfirmModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function closeStudentConfirmModal() {
+    const modal = document.getElementById('studentConfirmModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Show check-in success modal
+function showCheckInSuccessModal(student, labRoom, purpose) {
+    const modalHtml = `
+        <div id="checkInSuccessModal" class="modal">
+            <div class="modal-content animate__animated animate__fadeInUp" style="max-width: 450px;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div style="width: 70px; height: 70px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);">
+                        <i class="fas fa-check" style="font-size: 35px; color: white;"></i>
+                    </div>
+                    <h2 style="color: #28a745; margin: 0;">Check-in Successful!</h2>
+                </div>
+                <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <div style="display: grid; gap: 12px;">
+                        <div style="display: flex; justify-content: space-between; background: white; padding: 12px 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                            <span style="color: #666; font-size: 14px;">Student</span>
+                            <span style="font-weight: 600; color: #333;">${escapeHtml(student.first_name)} ${escapeHtml(student.last_name)}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; background: white; padding: 12px 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                            <span style="color: #666; font-size: 14px;">ID Number</span>
+                            <span style="font-weight: 600; color: #333;">${escapeHtml(student.id_number)}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; background: white; padding: 12px 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                            <span style="color: #666; font-size: 14px;">Lab Room</span>
+                            <span style="font-weight: 600; color: #333;">${escapeHtml(labRoom)}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; background: white; padding: 12px 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                            <span style="color: #666; font-size: 14px;">Purpose</span>
+                            <span style="font-weight: 600; color: #333;">${escapeHtml(purpose)}</span>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn-primary" style="width: 100%; padding: 14px; font-size: 16px;" onclick="closeCheckInSuccessModal()">
+                    <i class="fas fa-check"></i> Done
+                </button>
+            </div>
+        </div>
+    `;
+    
+    const existingModal = document.getElementById('checkInSuccessModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function closeCheckInSuccessModal() {
+    const modal = document.getElementById('checkInSuccessModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Show error modal
+function showErrorModal(title, message) {
+    const modalHtml = `
+        <div id="errorModal" class="modal">
+            <div class="modal-content animate__animated animate__fadeInUp" style="max-width: 400px; text-align: center;">
+                <div style="text-align: center; margin-bottom: 15px;">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 30px; color: white;"></i>
+                    </div>
+                </div>
+                <h2 style="color: #dc3545; margin: 0 0 15px 0;">${escapeHtml(title)}</h2>
+                <p style="color: #666; margin-bottom: 20px;">${escapeHtml(message)}</p>
+                <button class="btn-primary" style="background: #dc3545; width: 100%; padding: 12px; font-size: 16px;" onclick="closeErrorModal()">
+                    <i class="fas fa-check"></i> OK
+                </button>
+            </div>
+        </div>
+    `;
+    
+    const existingModal = document.getElementById('errorModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+function closeErrorModal() {
+    const modal = document.getElementById('errorModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Select student from modal results
+async function selectStudentForSitInFromModal(studentId) {
+    try {
+        const response = await fetch(`/api/user/${studentId}`);
+        
+        if (response.ok) {
+            const student = await response.json();
+            redirectToSitInFormFromModal(student);
+        }
+    } catch (error) {
+        console.error('Error loading student:', error);
+    }
+}
+
+// Legacy function for backward compatibility
+async function adminSearch() {
+    const query = document.getElementById('adminSearchInput').value;
+    if (!query) return;
+    
+    try {
+        const response = await fetch(`/api/admin/search?q=${encodeURIComponent(query)}`);
+        if (response.ok) {
+            const results = await response.json();
+            displaySearchResults(results);
+        }
+    } catch (error) {
+        console.error('Error searching:', error);
+    }
+}
+
+function displaySearchResults(results) {
+    const container = document.getElementById('searchResults');
+    if (!container) return;
+    
+    if (!results || results.length === 0) {
+        container.innerHTML = '<p class="no-data-message">No results found</p>';
+        return;
+    }
+    
+    container.innerHTML = results.map(result => `
+        <div class="search-result-item">
+            <div class="result-info">
+                <strong>${result.first_name} ${result.last_name}</strong>
+                <span>ID: ${result.id_number}</span>
+                <span>${result.course} - ${result.course_level} Year</span>
+            </div>
+            <button class="btn-icon" onclick="viewStudent(${result.id})">
+                <i class="fas fa-eye"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+// =============================================
+// Announcements Functions
+// =============================================
+
+// Load announcements for admin
+async function loadAdminAnnouncements() {
+    try {
+        const token = localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
+        const response = await fetch('/api/admin/announcements', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        if (response.ok) {
+            const announcements = await response.json();
+            displayAdminAnnouncements(announcements);
+            displayDashboardAnnouncements(announcements);
+        }
+    } catch (error) {
+        console.error('Error loading announcements:', error);
+    }
+}
+
+// Display announcements in the admin dashboard list
+function displayDashboardAnnouncements(announcements) {
+    const container = document.getElementById('dashboardAnnouncementsList');
+    if (!container) return;
+    
+    if (!announcements || announcements.length === 0) {
+        container.innerHTML = '<p class="no-data-message">No announcements yet</p>';
+        return;
+    }
+    
+    container.innerHTML = announcements.slice(0, 5).map(announcement => `
+        <div class="dashboard-announcement-item ${announcement.priority || 'normal'}">
+            <div class="dashboard-announcement-item-header">
+                <h5>${escapeHtml(announcement.title)}</h5>
+                <span class="dashboard-announcement-item-date">${formatDate(announcement.created_at)}</span>
+            </div>
+            <p class="dashboard-announcement-item-content">${escapeHtml(announcement.content)}</p>
+            <div class="dashboard-announcement-item-actions">
+                <button class="btn-remove" onclick="deleteAnnouncement(${announcement.id})">
+                    <i class="fas fa-trash"></i> Remove
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Display announcements in the admin dashboard list
+function displayAdminAnnouncements(announcements) {
+    const container = document.getElementById('announcementsList');
+    if (!container) return;
+    
+    if (!announcements || announcements.length === 0) {
+        container.innerHTML = '<p class="no-data-message">No announcements yet</p>';
+        return;
+    }
+    
+    container.innerHTML = announcements.map(announcement => `
+        <div class="announcement-item">
+            <div class="announcement-item-header">
+                <h4>${escapeHtml(announcement.title)}</h4>
+                <span class="announcement-item-date">${formatDate(announcement.created_at)}</span>
+            </div>
+            <p class="announcement-item-admin">Posted by: ${announcement.admin_first_name} ${announcement.admin_last_name}</p>
+            <p class="announcement-item-content">${escapeHtml(announcement.content)}</p>
+            <div class="announcement-item-actions">
+                <button class="btn-danger" onclick="deleteAnnouncement(${announcement.id})">
+                    <i class="fas fa-trash"></i> Remove
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Create new announcement (from dashboard form)
+async function createAnnouncement(title, content, priority) {
+    try {
+        const token = localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
+        const response = await fetch('/api/admin/announcements', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ title, content, priority })
+        });
+        
+        if (response.ok) {
+            // Reset dashboard form
+            const dashboardForm = document.getElementById('createAnnouncementForm');
+            if (dashboardForm) {
+                dashboardForm.reset();
+            }
+            // Reset other form if exists
+            const otherForm = document.getElementById('announcementForm');
+            if (otherForm) {
+                otherForm.reset();
+            }
+            loadAdminAnnouncements();
+            alert('Announcement posted successfully!');
+        } else {
+            const error = await response.json();
+            alert('Error: ' + error.error);
+        }
+    } catch (error) {
+        console.error('Error creating announcement:', error);
+        alert('Failed to create announcement');
+    }
+}
+
+// Delete announcement
+async function deleteAnnouncement(id) {
+    if (!confirm('Are you sure you want to remove this announcement?')) {
+        return;
+    }
+    
+    try {
+        const token = localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
+        const response = await fetch(`/api/admin/announcements/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            loadAdminAnnouncements();
+            alert('Announcement removed successfully!');
+        } else {
+            const error = await response.json();
+            alert('Error: ' + error.error);
+        }
+    } catch (error) {
+        console.error('Error deleting announcement:', error);
+        alert('Failed to delete announcement');
+    }
+}
+
+// Set up announcement form handler
+function setupAnnouncementForm() {
+    const form = document.getElementById('announcementForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const title = document.getElementById('announcementTitle').value.trim();
+            const content = document.getElementById('announcementContent').value.trim();
+            
+            if (title && content) {
+                createAnnouncement(title, content);
+            }
+        });
+    }
+}
+
+// Utility function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Utility function to format date
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function filterRecords() {
+    const date = document.getElementById('filterDate').value;
+    const labRoom = document.getElementById('filterLabRoom').value;
+    
+    let url = '/api/admin/records?';
+    if (date) url += `date=${date}&`;
+    if (labRoom) url += `lab_room=${labRoom}`;
+    
+    fetch(url)
+        .then(res => res.json())
+        .then(records => displayRecords(records))
+        .catch(err => console.error('Error filtering records:', err));
+}
+
+function clearRecordFilters() {
+    document.getElementById('filterDate').value = '';
+    document.getElementById('filterLabRoom').value = '';
+    loadAllRecords();
+}
+
+// =============================================
 // User Information Display
 // =============================================
 function displayUserInfo() {
-    // Update navigation
-    document.getElementById('userName').textContent = currentUser.name || 'Student';
+    // Get user role (default to 'student')
+    const userRole = currentUser.role || 'student';
+    
+    // Show/hide navigation based on role
+    const studentNav = document.getElementById('studentNav');
+    const adminNav = document.getElementById('adminNav');
+    
+    if (userRole === 'admin') {
+        // Show admin navigation, hide student navigation
+        if (studentNav) studentNav.style.display = 'none';
+        if (adminNav) adminNav.style.display = 'flex';
+        
+        // Update admin name
+        document.getElementById('adminUserName').textContent = currentUser.name || 'Admin';
+    } else {
+        // Show student navigation, hide admin navigation
+        if (studentNav) studentNav.style.display = 'flex';
+        if (adminNav) adminNav.style.display = 'none';
+        
+        // Update student name
+        document.getElementById('userName').textContent = currentUser.name || 'Student';
+    }
     
     // Update student information card
     document.getElementById('infoName').textContent = currentUser.name || 'Student Name';
@@ -163,6 +1153,9 @@ function getYearLevel(level) {
 // Navigation & Section Management
 // =============================================
 function showSection(sectionName) {
+    // Get user role
+    const userRole = currentUser.role || 'student';
+    
     // Hide all sections
     const sections = document.querySelectorAll('.content-section');
     sections.forEach(section => section.classList.add('hidden'));
@@ -174,12 +1167,52 @@ function showSection(sectionName) {
     // Show selected section and activate nav link
     switch(sectionName) {
         case 'dashboard':
-            document.getElementById('dashboardSection').classList.remove('hidden');
+        case 'adminDashboard':
+            if (userRole === 'admin') {
+                document.getElementById('adminDashboardSection').classList.remove('hidden');
+            } else {
+                document.getElementById('dashboardSection').classList.remove('hidden');
+            }
             activateNavLink(1);
+            break;
+        case 'search':
+            if (userRole === 'admin') {
+                document.getElementById('searchSection').classList.remove('hidden');
+                activateAdminNavLink(1);
+            }
+            break;
+        case 'student':
+            if (userRole === 'admin') {
+                document.getElementById('studentMgmtSection').classList.remove('hidden');
+                loadAllStudents(); // Load students when section is shown
+                activateAdminNavLink(2);
+            }
+            break;
+        case 'sitIn':
+            if (userRole === 'admin') {
+                document.getElementById('sitInSection').classList.remove('hidden');
+                activateAdminNavLink(3);
+            }
+            break;
+        case 'viewRecords':
+            if (userRole === 'admin') {
+                document.getElementById('viewRecordsSection').classList.remove('hidden');
+                activateAdminNavLink(4);
+            }
+            break;
+        case 'feedbacks':
+            if (userRole === 'admin') {
+                document.getElementById('feedbacksSection').classList.remove('hidden');
+                activateAdminNavLink(5);
+            }
             break;
         case 'reservation':
             document.getElementById('reservationSection').classList.remove('hidden');
-            activateNavLink(2);
+            if (userRole === 'admin') {
+                activateAdminNavLink(6);
+            } else {
+                activateNavLink(2);
+            }
             break;
         case 'notifications':
             document.getElementById('notificationsSection').classList.remove('hidden');
@@ -201,6 +1234,14 @@ function activateNavLink(index) {
     const navLinks = document.querySelectorAll('.nav-link');
     if (navLinks[index]) {
         navLinks[index].classList.add('active');
+    }
+}
+
+function activateAdminNavLink(index) {
+    // Get admin nav links (skip Home link which is index 0)
+    const adminNavLinks = document.querySelectorAll('#adminNav .nav-link');
+    if (adminNavLinks[index]) {
+        adminNavLinks[index].classList.add('active');
     }
 }
 
@@ -632,19 +1673,24 @@ function loadMockAnnouncements() {
 
 function displayAnnouncements(announcements) {
     const listElement = document.getElementById('announcementList');
+    const adminListElement = document.getElementById('adminAnnouncementList');
     
     if (!announcements || announcements.length === 0) {
-        listElement.innerHTML = '<p class="no-data-message">No announcements available.</p>';
+        if (listElement) listElement.innerHTML = '<p class="no-data-message">No announcements available.</p>';
+        if (adminListElement) adminListElement.innerHTML = '<p class="no-data-message">No announcements available.</p>';
         return;
     }
     
-    listElement.innerHTML = announcements.map(announcement => `
+    const html = announcements.map(announcement => `
         <div class="announcement-item">
-            <h4>${announcement.title}</h4>
-            <p>${announcement.message}</p>
-            <span class="announcement-date">${formatDate(announcement.date)}</span>
+            <h4>${escapeHtml(announcement.title)}</h4>
+            <p>${escapeHtml(announcement.content)}</p>
+            <span class="announcement-date">${formatDate(announcement.created_at)}</span>
         </div>
     `).join('');
+    
+    if (listElement) listElement.innerHTML = html;
+    if (adminListElement) adminListElement.innerHTML = html;
 }
 
 // =============================================
@@ -787,6 +1833,109 @@ function setupEventListeners() {
     const editForm = document.getElementById('editProfileForm');
     if (editForm) {
         editForm.addEventListener('submit', handleEditProfile);
+    }
+    
+    // Admin sit-in form submission
+    const adminSitInForm = document.getElementById('adminSitInForm');
+    if (adminSitInForm) {
+        // Add listener to student ID to enable session editing when manually changed
+        const studentIdInput = document.getElementById('studentIdNumber');
+        if (studentIdInput) {
+            studentIdInput.addEventListener('input', function() {
+                document.getElementById('studentSession').readOnly = false;
+                document.getElementById('studentName').value = '';
+                document.getElementById('studentSession').value = '';
+            });
+        }
+        
+        adminSitInForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const studentIdNumber = document.getElementById('studentIdNumber').value.trim();
+            const studentName = document.getElementById('studentName').value.trim();
+            const studentSession = document.getElementById('studentSession').value.trim();
+            const labRoom = document.getElementById('labRoom').value;
+            const purpose = document.getElementById('sitInPurpose').value;
+            
+            if (!studentIdNumber || !labRoom || !purpose) {
+                showErrorModal('Missing Fields', 'Please fill in all fields');
+                return;
+            }
+            
+            // First, get the student by ID number
+            try {
+                const searchResponse = await fetch(`/api/admin/student/${encodeURIComponent(studentIdNumber)}`);
+                
+                let student;
+                if (searchResponse.ok) {
+                    student = await searchResponse.json();
+                }
+                
+                // If student exists, update their remaining sessions if changed
+                if (student) {
+                    const newSessions = parseInt(studentSession, 10);
+                    const currentSessions = student.remaining_sessions || 0;
+                    
+                    // Only update if sessions have changed
+                    if (!isNaN(newSessions) && newSessions >= 0 && newSessions !== currentSessions) {
+                        await fetch(`/api/admin/students/${student.id}/sessions`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ remaining_sessions: newSessions })
+                        });
+                    }
+                }
+                
+                if (!searchResponse.ok) {
+                    showErrorModal('Student Not Found', 'Please search for the student first.');
+                    return;
+                }
+                
+                // Now create the sit-in record
+                const checkInResponse = await fetch('/api/sitin/checkin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: student.id,
+                        lab_room: labRoom,
+                        purpose: purpose
+                    })
+                });
+                
+                if (checkInResponse.ok) {
+                    const result = await checkInResponse.json();
+                    showCheckInSuccessModal(student, labRoom, purpose);
+                    
+                    // Close modal and reset form
+                    closeSitInModal();
+                } else {
+                    const error = await checkInResponse.json();
+                    showErrorModal('Check-in Failed', error.error || 'Unable to check in student');
+                }
+            } catch (error) {
+                console.error('Error during check-in:', error);
+                showErrorModal('Check-in Error', 'An error occurred during check-in');
+            }
+        });
+    }
+    
+    // Dashboard announcement form submission
+    const createAnnouncementForm = document.getElementById('createAnnouncementForm');
+    if (createAnnouncementForm) {
+        createAnnouncementForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const title = document.getElementById('announcementTitle').value.trim();
+            const content = document.getElementById('announcementContent').value.trim();
+            const priority = document.getElementById('announcementPriority').value;
+            
+            if (title && content) {
+                createAnnouncement(title, content, priority);
+            }
+        });
     }
     
     // Close notification panel when clicking outside

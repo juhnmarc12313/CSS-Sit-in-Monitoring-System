@@ -81,6 +81,7 @@ function initializeDatabase() {
                 email TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
                 profile_picture TEXT,
+                role TEXT DEFAULT 'student',
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 is_active BOOLEAN DEFAULT 1
@@ -96,6 +97,22 @@ function initializeDatabase() {
                         console.error('Error adding profile_picture column:', alterErr.message);
                     }
                 });
+                // Add role column if it doesn't exist (for existing databases)
+                db.run(`ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'student'`, (alterErr) => {
+                    if (alterErr && !alterErr.message.includes('duplicate column name')) {
+                        console.error('Error adding role column:', alterErr.message);
+                    }
+                });
+                
+                // Add remaining_sessions column if it doesn't exist (for existing databases)
+                db.run(`ALTER TABLE users ADD COLUMN remaining_sessions INTEGER DEFAULT 30`, (alterErr) => {
+                    if (alterErr && !alterErr.message.includes('duplicate column name')) {
+                        console.error('Error adding remaining_sessions column:', alterErr.message);
+                    }
+                });
+                
+                // Create default admin account
+                createDefaultAdmin();
             }
         });
 
@@ -145,6 +162,55 @@ function initializeDatabase() {
         // Create indexes for sit-in queries
         db.run(`CREATE INDEX IF NOT EXISTS idx_sit_in_user_id ON sit_in_records(user_id)`);
         db.run(`CREATE INDEX IF NOT EXISTS idx_sit_in_date ON sit_in_records(date)`);
+    });
+}
+
+// Create default admin account
+function createDefaultAdmin() {
+    const adminIdNumber = 'admin';
+    const adminPassword = hashPassword('admin123');
+    
+    // Check if admin exists
+    db.get(`SELECT id FROM users WHERE id_number = ?`, [adminIdNumber], (err, row) => {
+        if (err) {
+            console.error('Error checking for admin:', err.message);
+            return;
+        }
+        
+        if (!row) {
+            // Create admin user
+            const query = `
+                INSERT INTO users (
+                    id_number, last_name, first_name, middle_name, 
+                    course_level, course, address, email, 
+                    password_hash, role, is_active
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+            
+            db.run(query, [
+                adminIdNumber,
+                'Admin',
+                'System',
+                'Admin',
+                0,
+                'Administrator',
+                'University of Cebu',
+                'admin@uc.ccs',
+                adminPassword,
+                'admin',
+                1
+            ], (insertErr) => {
+                if (insertErr) {
+                    console.error('Error creating admin account:', insertErr.message);
+                } else {
+                    console.log('Default admin account created successfully!');
+                    console.log('  ID Number: admin');
+                    console.log('  Password: admin123');
+                }
+            });
+        } else {
+            console.log('Admin account already exists');
+        }
     });
 }
 
@@ -241,7 +307,8 @@ app.post('/api/login', (req, res) => {
                 course: user.course,
                 course_level: user.course_level,
                 address: user.address,
-                profile_picture: user.profile_picture
+                profile_picture: user.profile_picture,
+                role: user.role || 'student'
             },
             session_token: session_token
         });
@@ -277,7 +344,7 @@ app.get('/api/session/validate', (req, res) => {
     // Find the session
     const sessionQuery = `
         SELECT s.*, u.id as user_id, u.id_number, u.last_name, u.first_name, u.middle_name, 
-               u.course_level, u.course, u.address, u.email, u.profile_picture
+               u.course_level, u.course, u.address, u.email, u.profile_picture, u.role
         FROM sessions s
         JOIN users u ON s.user_id = u.id
         WHERE s.session_token = ? AND s.logout_time IS NULL
@@ -304,7 +371,8 @@ app.get('/api/session/validate', (req, res) => {
                 course: session.course,
                 course_level: session.course_level,
                 address: session.address,
-                profile_picture: session.profile_picture
+                profile_picture: session.profile_picture,
+                role: session.role || 'student'
             }
         });
     });
@@ -314,7 +382,7 @@ app.get('/api/session/validate', (req, res) => {
 app.get('/api/user/:id', (req, res) => {
     const { id } = req.params;
 
-    const query = `SELECT id, id_number, last_name, first_name, middle_name, course_level, course, address, email, profile_picture, created_at FROM users WHERE id = ?`;
+    const query = `SELECT id, id_number, last_name, first_name, middle_name, course_level, course, address, email, profile_picture, created_at, remaining_sessions FROM users WHERE id = ?`;
 
     db.get(query, [id], (err, user) => {
         if (err) {
@@ -468,6 +536,280 @@ app.put('/api/user/:id', (req, res) => {
     }
 });
 
+// Update user role (admin only)
+app.put('/api/user/:id/role', (req, res) => {
+    const { id } = req.params;
+    const { role } = req.body;
+
+    if (!role || !['student', 'admin'].includes(role)) {
+        return res.status(400).json({ error: 'Invalid role. Must be student or admin' });
+    }
+
+    const query = `UPDATE users SET role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+    db.run(query, [role, id], function(err) {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to update role: ' + err.message });
+        }
+        if (this.changes === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json({ message: 'Role updated successfully', role: role });
+    });
+});
+
+// =============================================
+// Admin API Endpoints
+// =============================================
+
+// Get all students (admin)
+app.get('/api/admin/students', (req, res) => {
+    const query = `SELECT id, id_number, first_name, last_name, middle_name, course, course_level, email, address, role, is_active, remaining_sessions FROM users WHERE role = 'student' ORDER BY last_name, first_name`;
+    
+    db.all(query, [], (err, students) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to fetch students: ' + err.message });
+        }
+        res.json(students);
+    });
+});
+
+// Add new student (admin)
+app.post('/api/admin/students', (req, res) => {
+    const { id_number, first_name, last_name, middle_name, email, course, course_level, address, password, remaining_sessions } = req.body;
+    
+    if (!id_number || !first_name || !last_name || !email || !course || !course_level || !password) {
+        return res.status(400).json({ error: 'All required fields must be filled' });
+    }
+    
+    const password_hash = crypto.createHash('sha256').update(password).digest('hex');
+    const sessions = remaining_sessions !== undefined ? remaining_sessions : 30;
+    
+    const query = `
+        INSERT INTO users (id_number, first_name, last_name, middle_name, email, course, course_level, address, password_hash, role, is_active, remaining_sessions)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'student', 1, ?)
+    `;
+    
+    db.run(query, [id_number, first_name, last_name, middle_name || null, email, course, course_level, address || null, password_hash, sessions], function(err) {
+        if (err) {
+            if (err.message.includes('UNIQUE constraint failed')) {
+                if (err.message.includes('id_number')) {
+                    return res.status(409).json({ error: 'ID Number already exists' });
+                } else if (err.message.includes('email')) {
+                    return res.status(409).json({ error: 'Email already exists' });
+                }
+            }
+            return res.status(500).json({ error: 'Failed to add student: ' + err.message });
+        }
+        res.json({ id: this.lastID, message: 'Student added successfully' });
+    });
+});
+
+// Update student remaining sessions (admin)
+app.put('/api/admin/students/:id/sessions', (req, res) => {
+    const { id } = req.params;
+    const { remaining_sessions } = req.body;
+    
+    if (remaining_sessions === undefined || remaining_sessions < 0) {
+        return res.status(400).json({ error: 'Valid remaining_sessions value is required' });
+    }
+    
+    const query = `UPDATE users SET remaining_sessions = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND role = 'student'`;
+    
+    db.run(query, [remaining_sessions, id], function(err) {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to update remaining sessions: ' + err.message });
+        }
+        if (this.changes === 0) {
+            return res.status(404).json({ error: 'Student not found' });
+        }
+        res.json({ message: 'Remaining sessions updated successfully' });
+    });
+});
+
+// Delete student (admin)
+app.delete('/api/admin/students/:id', (req, res) => {
+    const { id } = req.params;
+    
+    // Soft delete - set is_active to 0
+    const query = `UPDATE users SET is_active = 0 WHERE id = ? AND role = 'student'`;
+    
+    db.run(query, [id], function(err) {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to delete student: ' + err.message });
+        }
+        if (this.changes === 0) {
+            return res.status(404).json({ error: 'Student not found' });
+        }
+        res.json({ message: 'Student deleted successfully' });
+    });
+});
+
+// Get admin dashboard stats
+app.get('/api/admin/stats', (req, res) => {
+    const stats = {};
+    
+    // Get total students
+    db.get(`SELECT COUNT(*) as count FROM users WHERE is_active = 1`, [], (err, row) => {
+        if (err) {
+            stats.totalStudents = 0;
+        } else {
+            stats.totalStudents = row.count;
+        }
+        
+        // Get active sit-ins
+        db.get(`SELECT COUNT(*) as count FROM sit_in_records WHERE time_out IS NULL`, [], (err, row) => {
+            if (err) {
+                stats.activeSitins = 0;
+            } else {
+                stats.activeSitins = row.count;
+            }
+            
+            // Get today's reservations
+            const today = new Date().toISOString().split('T')[0];
+            db.get(`SELECT COUNT(*) as count FROM reservations WHERE date = ?`, [today], (err, row) => {
+                if (err) {
+                    stats.todayReservations = 0;
+                } else {
+                    stats.todayReservations = row.count;
+                }
+                
+                res.json(stats);
+            });
+        });
+    });
+});
+
+// Get all sit-in records (admin)
+app.get('/api/admin/records', (req, res) => {
+    const { date, lab_room } = req.query;
+    let query = `
+        SELECT sr.*, u.id_number, u.first_name, u.last_name, u.course
+        FROM sit_in_records sr
+        JOIN users u ON sr.user_id = u.id
+        WHERE 1=1
+    `;
+    const params = [];
+    
+    if (date) {
+        query += ` AND sr.date = ?`;
+        params.push(date);
+    }
+    if (lab_room) {
+        query += ` AND sr.lab_room = ?`;
+        params.push(lab_room);
+    }
+    
+    query += ` ORDER BY sr.date DESC, sr.time_in DESC`;
+    
+    db.all(query, params, (err, records) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to fetch records: ' + err.message });
+        }
+        res.json(records);
+    });
+});
+
+// Search students (admin)
+app.get('/api/admin/search', (req, res) => {
+    const { q } = req.query;
+    
+    if (!q) {
+        return res.json([]);
+    }
+    
+    const query = `
+        SELECT id, id_number, first_name, last_name, course, course_level, email
+        FROM users 
+        WHERE is_active = 1 AND (
+            id_number LIKE ? OR 
+            first_name LIKE ? OR 
+            last_name LIKE ? OR
+            email LIKE ?
+        )
+        LIMIT 20
+    `;
+    const searchTerm = `%${q}%`;
+    
+    db.all(query, [searchTerm, searchTerm, searchTerm, searchTerm], (err, results) => {
+        if (err) {
+            return res.status(500).json({ error: 'Search failed: ' + err.message });
+        }
+        res.json(results);
+    });
+});
+
+// Get student by ID number (admin)
+app.get('/api/admin/student/:idNumber', (req, res) => {
+    const { idNumber } = req.params;
+    
+    if (!idNumber) {
+        return res.status(400).json({ error: 'ID number is required' });
+    }
+    
+    const query = `
+        SELECT id, id_number, first_name, last_name, middle_name, email, course, course_level, is_active, created_at, remaining_sessions
+        FROM users 
+        WHERE id_number = ? AND role = 'student'
+    `;
+    
+    db.get(query, [idNumber], (err, student) => {
+        if (err) {
+            console.error('Search error:', err.message);
+            return res.status(500).json({ error: 'Search failed: ' + err.message });
+        }
+        if (!student) {
+            return res.status(404).json({ error: 'Student not found' });
+        }
+        res.json(student);
+    });
+});
+
+// Search students by ID number or name (admin)
+app.get('/api/admin/students/search', (req, res) => {
+    const { q } = req.query;
+    const session_token = req.headers.authorization?.replace('Bearer ', '');
+    
+    // Skip authorization check for now - just search
+    if (!q || q.trim().length < 2) {
+        return res.status(400).json({ error: 'Search query must be at least 2 characters' });
+    }
+    
+    const searchTerm = `%${q.trim()}%`;
+    const query = `
+        SELECT id, id_number, first_name, last_name, middle_name, email, course, course_level, is_active, created_at, remaining_sessions
+        FROM users 
+        WHERE (id_number LIKE ? OR first_name LIKE ? OR last_name LIKE ?)
+        AND role = 'student'
+        ORDER BY last_name, first_name
+        LIMIT 20
+    `;
+    
+    db.all(query, [searchTerm, searchTerm, searchTerm], (err, students) => {
+        if (err) {
+            console.error('Search error:', err.message);
+            return res.status(500).json({ error: 'Search failed: ' + err.message });
+        }
+        res.json(students);
+    });
+});
+
+// Get feedbacks (admin)
+app.get('/api/admin/feedbacks', (req, res) => {
+    const query = `
+        SELECT f.*, u.id_number, u.first_name, u.last_name
+        FROM feedbacks f
+        JOIN users u ON f.user_id = u.id
+        ORDER BY f.created_at DESC
+    `;
+    
+    db.all(query, [], (err, feedbacks) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to fetch feedbacks: ' + err.message });
+        }
+        res.json(feedbacks);
+    });
+});
+
 // Helper function to update profile
 function updateProfile(id, first_name, last_name, middle_name, email, course, course_level, address, password_hash, remove_profile_picture, res) {
     let query, params;
@@ -539,6 +881,134 @@ db.run(`
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )
 `);
+
+// Create announcements table if not exists
+db.run(`
+    CREATE TABLE IF NOT EXISTS announcements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        content TEXT NOT NULL,
+        priority TEXT DEFAULT 'normal',
+        admin_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        is_active BOOLEAN DEFAULT 1,
+        FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE
+    )
+`);
+
+// Add priority column if it doesn't exist
+db.run(`ALTER TABLE announcements ADD COLUMN priority TEXT DEFAULT 'normal'`, (err) => {
+    if (err && !err.message.includes('duplicate column name')) {
+        console.error('Error adding priority column:', err.message);
+    }
+});
+
+// Get all active announcements (for students)
+app.get('/api/announcements', (req, res) => {
+    const query = `
+        SELECT a.*, u.first_name as admin_first_name, u.last_name as admin_last_name
+        FROM announcements a
+        JOIN users u ON a.admin_id = u.id
+        WHERE a.is_active = 1
+        ORDER BY a.created_at DESC
+    `;
+    
+    db.all(query, [], (err, announcements) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to fetch announcements: ' + err.message });
+        }
+        res.json(announcements);
+    });
+});
+
+// Get all announcements including inactive (for admin)
+app.get('/api/admin/announcements', (req, res) => {
+    const query = `
+        SELECT a.*, u.first_name as admin_first_name, u.last_name as admin_last_name
+        FROM announcements a
+        JOIN users u ON a.admin_id = u.id
+        ORDER BY a.created_at DESC
+    `;
+    
+    db.all(query, [], (err, announcements) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to fetch announcements: ' + err.message });
+        }
+        res.json(announcements);
+    });
+});
+
+// Create new announcement (admin)
+app.post('/api/admin/announcements', (req, res) => {
+    const { title, content, priority } = req.body;
+    const session_token = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!title || !content) {
+        return res.status(400).json({ error: 'Title and content are required' });
+    }
+    
+    if (!session_token) {
+        return res.status(401).json({ error: 'Unauthorized - No session token' });
+    }
+    
+    // Get user from session token
+    const userQuery = `SELECT user_id, u.role FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.session_token = ? AND s.logout_time IS NULL`;
+    db.get(userQuery, [session_token], (err, session) => {
+        if (err || !session) {
+            return res.status(401).json({ error: 'Unauthorized - Invalid session' });
+        }
+        
+        if (session.role !== 'admin') {
+            return res.status(403).json({ error: 'Forbidden - Admin access required' });
+        }
+        
+        const adminId = session.user_id;
+        
+        const query = `
+            INSERT INTO announcements (title, content, priority, admin_id)
+            VALUES (?, ?, ?, ?)
+        `;
+        
+        db.run(query, [title, content, priority || 'normal', adminId], function(err) {
+            if (err) {
+                return res.status(500).json({ error: 'Failed to create announcement: ' + err.message });
+            }
+            res.json({ id: this.lastID, message: 'Announcement created successfully' });
+        });
+    });
+});
+
+// Delete/remove announcement (admin)
+app.delete('/api/admin/announcements/:id', (req, res) => {
+    const { id } = req.params;
+    const session_token = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!session_token) {
+        return res.status(401).json({ error: 'Unauthorized - No session token' });
+    }
+    
+    // Get user from session token
+    const userQuery = `SELECT user_id, u.role FROM sessions s JOIN users u ON s.user_id = u.id WHERE s.session_token = ? AND s.logout_time IS NULL`;
+    db.get(userQuery, [session_token], (err, session) => {
+        if (err || !session) {
+            return res.status(401).json({ error: 'Unauthorized - Invalid session' });
+        }
+        
+        if (session.role !== 'admin') {
+            return res.status(403).json({ error: 'Forbidden - Admin access required' });
+        }
+        
+        // Soft delete - set is_active to 0
+        const query = `UPDATE announcements SET is_active = 0 WHERE id = ?`;
+        
+        db.run(query, [id], function(err) {
+            if (err) {
+                return res.status(500).json({ error: 'Failed to remove announcement: ' + err.message });
+            }
+            res.json({ message: 'Announcement removed successfully' });
+        });
+    });
+});
 
 // Get notifications for a user
 app.get('/api/notifications/:user_id', (req, res) => {
