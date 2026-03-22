@@ -136,6 +136,15 @@ function initializeDatabase() {
                 console.error('Error creating sessions table:', err.message);
             } else {
                 console.log('Sessions table created/verified');
+                
+                // Clear all existing sessions on server startup (force logout)
+                db.run(`UPDATE sessions SET logout_time = CURRENT_TIMESTAMP WHERE logout_time IS NULL`, (clearErr) => {
+                    if (clearErr) {
+                        console.error('Error clearing sessions on startup:', clearErr.message);
+                    } else {
+                        console.log('All previous sessions cleared on server startup');
+                    }
+                });
             }
         });
 

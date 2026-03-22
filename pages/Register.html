@@ -14,19 +14,20 @@
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
-    <title>CCS Sit-in Monitoring System</title>
+    <title>CCS Sit-in Monitoring System - Register</title>
   </head>
   <body>
+    <!-- Navigation -->
     <div class="nav">
       <div class="logo">
         <img
           src="/image/ccslogo1.png"
           class="img"
           alt="uclogo"
-          height="60px"
-          width="60px"
+          height="50px"
+          width="50px"
         />
-        <p class="title">CCS Sit-in Monitoring System</p>
+        <p class="title">CCS Sit-in Monitoring</p>
       </div>
 
       <div class="links" id="nav-links">
@@ -63,74 +64,81 @@
       </div>
     </div>
 
+    <!-- Main Content -->
     <main>
       <section class="Register animate__animated animate__fadeInUp">
+        <!-- Left Card - Personal & Academic Info -->
         <div class="container-left">
-          <h1>Create Your Account</h1>
+          <h1>Personal Information</h1>
           <form id="registerForm">
+            <div class="section-title">Account Details</div>
+            
             <div class="input-text">
-              <input type="text" id="id_number" name="id_number" required />
+              <input type="text" id="id_number" name="id_number" placeholder=" " required />
               <label for="id_number">ID Number</label>
             </div>
 
             <div class="input-text">
-              <input type="text" id="last_name" name="last_name" required />
+              <input type="text" id="last_name" name="last_name" placeholder=" " required />
               <label for="last_name">Last Name</label>
             </div>
 
             <div class="input-text">
-              <input type="text" id="first_name" name="first_name" required />
+              <input type="text" id="first_name" name="first_name" placeholder=" " required />
               <label for="first_name">First Name</label>
             </div>
 
             <div class="input-text">
-              <input type="text" id="middle_name" name="middle_name" />
+              <input type="text" id="middle_name" name="middle_name" placeholder=" " />
               <label for="middle_name">Middle Name</label>
             </div>
 
+            <div class="section-title">Academic Info</div>
+
             <div class="input-text">
-              <select
-                id="course_level"
-                name="course_level"
-                class="form-select"
-                required
-              >
-                <option value="" disabled selected>Select Year Level</option>
+              <select id="course_level" name="course_level" required>
+                <option value="" disabled selected></option>
                 <option value="1">1st Year</option>
                 <option value="2">2nd Year</option>
                 <option value="3">3rd Year</option>
                 <option value="4">4th Year</option>
               </select>
-              <label for="course_level">Course Level</label>
+              <label for="course_level" class="select-label">Year Level</label>
             </div>
           </form>
         </div>
 
+        <!-- Right Card - Course, Contact & Password -->
         <div class="container-right">
-          <form id="registerFormRight" style="margin-top: 55px">
+          <h1>Account Setup</h1>
+          <form id="registerFormRight">
+            <div class="section-title">Course & Contact</div>
+
             <div class="input-text">
-              <select id="course" name="course" class="form-select" required>
-                <option value="" disabled selected>Select Course</option>
+              <select id="course" name="course" required>
+                <option value="" disabled selected></option>
                 <option value="BSIT">BS in Information Technology</option>
                 <option value="BSCS">BS in Computer Science</option>
                 <option value="BSIS">BS in Information Systems</option>
-                <option value="ACT">BS in Artificial Inteligence (AI)</option>
+                <option value="ACT">BS in Artificial Intelligence (AI)</option>
               </select>
-              <label for="course">Course</label>
+              <label for="course" class="select-label">Course</label>
             </div>
 
             <div class="input-text">
-              <input type="text" id="address" name="address" />
+              <input type="text" id="address" name="address" placeholder=" " />
               <label for="address">Address</label>
             </div>
 
             <div class="input-text">
-              <input type="email" id="email" name="email" required />
+              <input type="email" id="email" name="email" placeholder=" " required />
               <label for="email">Email</label>
             </div>
 
+            <div class="section-title">Security</div>
+
             <div class="input-text">
-              <input type="password" id="password" name="password" required />
+              <input type="password" id="password" name="password" placeholder=" " required minlength="6" />
               <label for="password">Password</label>
             </div>
 
@@ -139,20 +147,26 @@
                 type="password"
                 id="confirm_password"
                 name="confirm_password"
+                placeholder=" "
                 required
               />
-              <label for="confirm_password">Repeat Password</label>
+              <label for="confirm_password">Confirm Password</label>
             </div>
 
             <div class="btn">
               <button type="button" onclick="handleRegister()">Register</button>
             </div>
 
-            <div id="message" class="mt-3"></div>
+            <div class="login-link">
+              Already have an account? <a href="/pages/login.html">Login here</a>
+            </div>
+
+            <div id="message"></div>
           </form>
         </div>
       </section>
     </main>
+
     <!-- Message Modal -->
     <div class="modal fade" id="messageModal" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
@@ -168,6 +182,7 @@
         </div>
       </div>
     </div>
+
     <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -183,12 +198,17 @@
         const address = document.getElementById("address").value;
         const email = document.getElementById("email").value;
         const password = document.getElementById("password").value;
-        const confirm_password =
-          document.getElementById("confirm_password").value;
+        const confirm_password = document.getElementById("confirm_password").value;
 
         // Validate passwords match
         if (password !== confirm_password) {
           showMessage("Passwords do not match!", "danger");
+          return;
+        }
+
+        // Validate password length
+        if (password.length < 6) {
+          showMessage("Password must be at least 6 characters!", "danger");
           return;
         }
 
