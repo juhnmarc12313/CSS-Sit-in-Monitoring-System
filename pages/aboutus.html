@@ -1,112 +1,132 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="/pages/aboutus.css" />
-    <link rel="stylesheet" href="/public/dashboard.css" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-    />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>About Us - CCS Sit-in Monitoring System</title>
-  </head>
-  <body>
+    <link rel="stylesheet" href="/pages/aboutus.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
     <!-- Navigation Bar -->
-    <div class="nav">
-      <div class="logo">
-        <img
-          src="/image/ccslogo1.png"
-          class="img"
-          alt="uclogo"
-          height="60px"
-          width="60px"
-        />
-        <p class="title">CCS Sit-in Monitoring System</p>
-      </div>
-
-      <div class="nav-links" id="nav-links">
-        <a href="/index.html" class="nav-link">
-          <i class="fas fa-home"></i> Home
-        </a>
-        <a href="/pages/community.html" class="nav-link">
-          <i class="fas fa-users"></i> Community
-        </a>
-        <a href="/pages/aboutus.html" class="nav-link active">
-          <i class="fas fa-info-circle"></i> About
-        </a>
-        <a href="/pages/login.html" class="nav-link" id="loginLink">
-          <i class="fas fa-sign-in-alt"></i> Login
-        </a>
-        <a href="/pages/Register.html" class="nav-link" id="registerLink">
-          <i class="fas fa-user-plus"></i> Register
-        </a>
-        <a href="/pages/dashboard.html" class="nav-link" id="dashboardLink" style="display: none;">
-          <i class="fas fa-tachometer-alt"></i> Dashboard
-        </a>
-        <a href="#" class="nav-link" id="logoutLink" onclick="handleLogout()" style="display: none;">
-          <i class="fas fa-sign-out-alt"></i> Logout
-        </a>
-      </div>
-
-      <div class="nav-right" id="nav-right" style="display: none;">
-        <div class="user-menu">
-          <span class="welcome-user">Welcome, <span id="userName">Student</span></span>
+    <nav class="nav">
+        <div class="logo">
+            <img src="/image/ccslogo1.png" alt="CCS Logo">
+            <span class="title">CCS Sit-in Monitoring</span>
         </div>
-        <button class="logout-btn" onclick="handleLogout()">
-          <i class="fas fa-sign-out-alt"></i> Logout
-        </button>
-      </div>
-    </div>
+
+        <div class="nav-links" id="nav-links">
+            <a href="/index.html" class="nav-link">
+                <i class="fas fa-home"></i> Home
+            </a>
+            <a href="/pages/community.html" class="nav-link">
+                <i class="fas fa-users"></i> Community
+            </a>
+            <a href="/pages/aboutus.html" class="nav-link active">
+                <i class="fas fa-info-circle"></i> About
+            </a>
+            <a href="/pages/login.html" class="nav-link" id="loginLink">
+                <i class="fas fa-sign-in-alt"></i> Login
+            </a>
+            <a href="/pages/Register.html" class="nav-link" id="registerLink">
+                <i class="fas fa-user-plus"></i> Register
+            </a>
+            <a href="/pages/dashboard.html" class="nav-link" id="dashboardLink" style="display: none;">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a>
+            <a href="#" class="nav-link" id="logoutLink" onclick="handleLogout()" style="display: none;">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </nav>
 
     <main>
-      <div class="container animate__animated animate__fadeInUp">
-        <div class="content">
-          <h4>Our Mission</h4>
+        <!-- Hero Section -->
+        <section class="hero animate__animated animate__fadeIn">
+            <h1>Inceptum, Innovatio, Muneris</h1>
+            <p>Empowering the next generation of global IT professionals through theoretical excellence and hands-on innovation.</p>
+        </section>
 
-          <p>
-            The <strong>College of Computer Studies (CCS)</strong> is dedicated
-            to providing a high-quality technical education that blends
-            theoretical foundations with hands-on innovation. In line with our
-            motto—Inceptum, Innovatio, Muneris (Beginning, Innovation,
-            Service)—we strive to produce globally competitive IT professionals.
-          </p>
+        <div class="container">
+            <!-- Mission & Vision Cards -->
+            <div class="mission-grid">
+                <!-- Our Mission -->
+                <div class="card animate__animated animate__fadeInUp animate-delay-1">
+                    <div class="card-icon">
+                        <i class="fas fa-bullseye"></i>
+                    </div>
+                    <h3>Our Mission</h3>
+                    <p>The College of Computer Studies (CCS) is dedicated to providing high-quality technical education that blends theory with practical skills, fostering globally competitive professionals.</p>
+                </div>
 
-          <h4>What We Do</h4>
-          <p>
-            The <strong>CCS Sit-in Monitoring System</strong> is designed to help
-            students track their lab sessions, manage their time effectively,
-            and make the most out of their available sit-in hours. This system
-            allows students to:
-          </p>
-          <ul>
-            <li>Reserve lab sessions in advance</li>
-            <li>Track their remaining sit-in hours</li>
-            <li>View their sit-in history</li>
-            <li>Stay updated with announcements</li>
-          </ul>
+                <!-- What We Do -->
+                <div class="card animate__animated animate__fadeInUp animate-delay-2">
+                    <div class="card-icon">
+                        <i class="fas fa-laptop-code"></i>
+                    </div>
+                    <h3>What We Do</h3>
+                    <ul>
+                        <li><i class="fas fa-check-circle"></i> Lab session management</li>
+                        <li><i class="fas fa-check-circle"></i> Real-time sit-in tracking</li>
+                        <li><i class="fas fa-check-circle"></i> Automated reservations</li>
+                        <li><i class="fas fa-check-circle"></i> Community collaboration</li>
+                    </ul>
+                </div>
 
-          <h4>Our Vision</h4>
-          <p>
-            To be a center of excellence in computing education that empowers
-            students to become innovative leaders in technology.
-          </p>
+                <!-- Our Vision -->
+                <div class="card animate__animated animate__fadeInUp animate-delay-3">
+                    <div class="card-icon">
+                        <i class="fas fa-eye"></i>
+                    </div>
+                    <h3>Our Vision</h3>
+                    <p>To be a premier center of excellence in computing education, empowering students to become innovative leaders in the ever-evolving world of technology.</p>
+                </div>
+            </div>
 
-          <h4>Contact Us</h4>
-          <p>
-            For inquiries, please contact us at:
-            <br />
-            <strong>Email:</strong> ccs@ucl.edu.ph
-            <br />
-            <strong>Phone:</strong> (02) 123-4567
-          </p>
+            <!-- Contact Section -->
+            <section class="contact-section animate__animated animate__fadeInUp">
+                <h2>Get in Touch</h2>
+                <div class="contact-info">
+                    <div class="contact-item">
+                        <i class="fas fa-envelope"></i>
+                        <span>Email Us</span>
+                        <p>ccs@ucl.edu.ph</p>
+                    </div>
+                    <div class="contact-item">
+                        <i class="fas fa-phone"></i>
+                        <span>Call Us</span>
+                        <p>(02) 123-4567</p>
+                    </div>
+                    <div class="contact-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>Find Us</span>
+                        <p>University of Cebu - Main Campus</p>
+                    </div>
+                </div>
+            </section>
         </div>
-      </div>
     </main>
+
     <script src="/js/navigation.js"></script>
-  </body>
+    <script>
+        // Simple script to handle showing/hiding links based on session
+        const sessionToken = localStorage.getItem('session_token');
+        if (sessionToken) {
+            document.getElementById('loginLink').style.display = 'none';
+            document.getElementById('registerLink').style.display = 'none';
+            document.getElementById('dashboardLink').style.display = 'flex';
+            document.getElementById('logoutLink').style.display = 'flex';
+        }
+        
+        async function handleLogout() {
+            if (confirm('Are you sure you want to logout?')) {
+                localStorage.removeItem('session_token');
+                localStorage.removeItem('user');
+                window.location.href = '/pages/login.html';
+            }
+        }
+    </script>
+</body>
 </html>
