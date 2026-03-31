@@ -1828,3 +1828,76 @@ tbody td {
 .btn-icon:hover {
   background: #4a2d5c;
 }
+
+/* Announcement Priority Styles */
+.announcement-item.priority-normal {
+  border-left: 5px solid #3498db;
+}
+
+.announcement-item.priority-important {
+  border-left: 5px solid #f1c40f;
+  background-color: #fefcf1;
+}
+
+.announcement-item.priority-urgent {
+  border-left: 5px solid #e74c3c;
+  background-color: #fdefed;
+}
+
+.announcement-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.priority-badge {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-weight: 700;
+  color: white;
+  text-transform: uppercase;
+}
+
+.priority-badge.normal {
+  background-color: #3498db;
+}
+
+.priority-badge.important {
+  background-color: #f1c40f;
+  color: #333;
+}
+
+.priority-badge.urgent {
+  background-color: #e74c3c;
+  animation: pulse urgent-pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes urgent-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.announcement-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 15px;
+  padding-top: 10px;
+  border-top: 1px dashed #eee;
+  font-size: 11px;
+  color: #888;
+}
+
+.announcement-author {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.announcement-date {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}

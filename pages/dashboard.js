@@ -89,7 +89,7 @@ async function loadAdminStats() {
             document.getElementById('totalStudents').textContent = stats.totalStudents || 0;
             document.getElementById('activeSitins').textContent = stats.activeSitins || 0;
             document.getElementById('todayReservations').textContent = stats.todayReservations || 0;
-            document.getElementById('totalFeedbacks').textContent = '0';
+            document.getElementById('totalFeedbacks').textContent = stats.totalFeedbacks || 0;
         }
     } catch (error) {
         console.error('Error loading admin stats:', error);
@@ -174,6 +174,7 @@ function displayRecords(records) {
                 <td>${record.purpose}</td>
                 <td>${record.time_in}</td>
                 <td>${record.time_out || 'Active'}</td>
+                <td>${record.remaining_sessions || 0}</td>
                 <td>${duration}</td>
             </tr>
         `;
@@ -1139,33 +1140,47 @@ function showSection(sectionName) {
             if (userRole === 'admin') {
                 document.getElementById('viewRecordsSection').classList.remove('hidden');
                 activateAdminNavLink(4);
+                loadAllRecords(); // Load records when section is shown
             }
             break;
         case 'feedbacks':
             if (userRole === 'admin') {
                 document.getElementById('feedbacksSection').classList.remove('hidden');
                 activateAdminNavLink(5);
+                loadFeedbacks(); // Load feedbacks when section is shown
             }
             break;
         case 'reservation':
-            document.getElementById('reservationSection').classList.remove('hidden');
+            const reservationSection = document.getElementById('reservationSection');
+            reservationSection.classList.remove('hidden');
+
             if (userRole === 'admin') {
+                document.getElementById('adminReservationView').style.display = 'block';
+                document.getElementById('studentReservationView').style.display = 'none';
                 activateAdminNavLink(6);
+                switchReservationTab('computerControl'); // Default admin tab
             } else {
+                document.getElementById('adminReservationView').style.display = 'none';
+                document.getElementById('studentReservationView').style.display = 'block';
                 activateNavLink(2);
+                loadUserReservations();
             }
+            break;
+        case 'studentFeedback':
+            document.getElementById('studentFeedbackSection').classList.remove('hidden');
+            activateNavLink(3);
             break;
         case 'notifications':
             document.getElementById('notificationsSection').classList.remove('hidden');
-            activateNavLink(3);
+            activateNavLink(4);
             break;
         case 'editProfile':
             document.getElementById('editProfileSection').classList.remove('hidden');
-            activateNavLink(4);
+            activateNavLink(5);
             break;
         case 'history':
             document.getElementById('historySection').classList.remove('hidden');
-            activateNavLink(5);
+            activateNavLink(6);
             displayFullHistory();
             break;
     }
@@ -1455,6 +1470,7 @@ function displayActiveSitins(records) {
             <td>${record.lab_room}</td>
             <td>${record.purpose}</td>
             <td>${formatTime(record.time_in)}</td>
+            <td>${record.remaining_sessions || 0}</td>
             <td>
                 <button class="btn-danger btn-small" onclick="handleAdminCheckout(${record.id})" title="Logout Student">
                     <i class="fas fa-sign-out-alt"></i> Logout
@@ -1479,8 +1495,10 @@ async function handleAdminCheckout(recordId) {
 
         if (response.ok) {
             showSuccessModal('Checkout Successful', 'Student has been logged out successfully.');
-            loadActiveSitins(); // Refresh the list
+            loadActiveSitins(); // Refresh current list
+            loadAllRecords(); // Refresh history list
             loadAdminStats(); // Update dashboard stats
+            loadAllStudents(); // Refresh student management list for session count
         } else {
             const error = await response.json();
             showErrorModal('Checkout Failed', error.error || 'Failed to check out student');
@@ -1490,6 +1508,213 @@ async function handleAdminCheckout(recordId) {
         showErrorModal('Error', 'An error occurred during checkout');
     }
     showLoading(false);
+}
+
+// =============================================
+// Feedbacks
+// =============================================
+async function loadFeedbacks() {
+    try {
+        const response = await fetch('/api/admin/feedbacks');
+        if (response.ok) {
+            const feedbacks = await response.json();
+            displayFeedbacks(feedbacks);
+            const totalFeedbacksEl = document.getElementById('totalFeedbacks');
+            if (totalFeedbacksEl) totalFeedbacksEl.textContent = feedbacks.length || 0;
+        }
+    } catch (error) {
+        console.error('Error loading feedbacks:', error);
+    }
+}
+
+function displayFeedbacks(feedbacks) {
+    const tbody = document.getElementById('feedbacksTableBody');
+    if (!tbody) return;
+
+    if (!feedbacks || feedbacks.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5">No feedbacks found</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = feedbacks.map(feedback => `
+        <tr>
+            <td>${formatDate(feedback.created_at)}</td>
+            <td>${feedback.first_name} ${feedback.last_name} (${feedback.id_number})</td>
+            <td>${generateStarRating(feedback.rating)}</td>
+            <td>${escapeHtml(feedback.comment || 'No comment')}</td>
+            <td>
+                <button class="btn-icon">
+                    <i class="fas fa-reply"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function generateStarRating(rating) {
+    let stars = '';
+    for (let i = 1; i <= 5; i++) {
+        stars += `<i class="${i <= rating ? 'fas' : 'far'} fa-star" style="color: #ffc107;"></i>`;
+    }
+    return stars;
+}
+
+// =============================================
+// Reservations
+// =============================================
+
+// Switch between admin reservation tabs
+function switchReservationTab(tabName) {
+    // Hide all tab content
+    const contents = document.querySelectorAll('.tab-content');
+    contents.forEach(c => c.classList.add('hidden'));
+
+    // Deactivate all tab buttons
+    const buttons = document.querySelectorAll('.tab-btn');
+    buttons.forEach(b => b.classList.remove('active'));
+
+    // Show selected tab
+    document.getElementById(tabName + 'Tab').classList.remove('hidden');
+
+    // Find and activate the correct button
+    buttons.forEach(b => {
+        if (b.getAttribute('onclick').includes(tabName)) {
+            b.classList.add('active');
+        }
+    });
+
+    // Load data for the tab
+    if (tabName === 'computerControl') loadComputerStatus();
+    if (tabName === 'requests') loadAdminReservations('pending');
+    if (tabName === 'logs') loadAdminReservations();
+}
+
+async function loadComputerStatus() {
+    try {
+        const response = await fetch('/api/admin/computer-status');
+        if (response.ok) {
+            const status = await response.json();
+            displayComputerStatus(status);
+        }
+    } catch (error) {
+        console.error('Error loading computer status:', error);
+    }
+}
+
+function displayComputerStatus(labs) {
+    const grid = document.getElementById('labStatusGrid');
+    if (!grid) return;
+
+    grid.innerHTML = labs.map(lab => `
+        <div class="lab-status-card animate__animated animate__fadeIn">
+            <div class="lab-info">
+                <h4>${lab.lab_name}</h4>
+                <div class="status-indicator ${lab.available_pcs > 0 ? 'available' : 'full'}"></div>
+            </div>
+            <div class="pc-count">
+                <span class="available">${lab.available_pcs}</span>
+                <span class="total">/ ${lab.total_pcs} Available</span>
+            </div>
+            <div class="lab-stats">
+                <p>Active Sit-ins: <strong>${lab.active_sitins}</strong></p>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: ${(lab.available_pcs / lab.total_pcs) * 100}%"></div>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function loadUserReservations() {
+    try {
+        const response = await fetch(`/api/reservations/user/${currentUser.id}`);
+        if (response.ok) {
+            const reservations = await response.json();
+            // Could display these in a table or list for students
+            console.log('User reservations:', reservations);
+        }
+    } catch (error) {
+        console.error('Error loading user reservations:', error);
+    }
+}
+
+async function loadAdminReservations(filterStatus = null) {
+    try {
+        const response = await fetch('/api/admin/reservations');
+        if (response.ok) {
+            let reservations = await response.json();
+
+            if (filterStatus) {
+                reservations = reservations.filter(r => r.status === filterStatus);
+                displayReservationRequests(reservations);
+            } else {
+                displayReservationLogs(reservations);
+            }
+        }
+    } catch (error) {
+        console.error('Error loading admin reservations:', error);
+    }
+}
+
+function displayReservationRequests(requests) {
+    const tbody = document.getElementById('reservationRequestsTableBody');
+    if (!tbody) return;
+
+    if (!requests || requests.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6">No pending requests</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = requests.map(r => `
+        <tr>
+            <td>${r.id_number}</td>
+            <td>${r.first_name} ${r.last_name}</td>
+            <td>${r.lab_room}</td>
+            <td>${formatDate(r.date)} ${formatTime(r.time)}</td>
+            <td>${escapeHtml(r.purpose)}</td>
+            <td>
+                <button class="btn-primary btn-small" onclick="updateReservationStatus(${r.id}, 'approved')">Approve</button>
+                <button class="btn-danger btn-small" onclick="updateReservationStatus(${r.id}, 'denied')">Deny</button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function displayReservationLogs(logs) {
+    const tbody = document.getElementById('reservationLogsTableBody');
+    if (!tbody) return;
+
+    if (!logs || logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5">No reservation logs found</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = logs.map(l => `
+        <tr>
+            <td>${formatDate(l.date)}</td>
+            <td>${formatTime(l.time)}</td>
+            <td>${l.first_name} ${l.last_name}</td>
+            <td>${l.lab_room}</td>
+            <td><span class="status-badge ${l.status}">${l.status}</span></td>
+        </tr>
+    `).join('');
+}
+
+async function updateReservationStatus(id, status) {
+    try {
+        const response = await fetch(`/api/admin/reservations/${id}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status })
+        });
+
+        if (response.ok) {
+            showSuccessModal('Success', `Reservation ${status} successfully.`);
+            switchReservationTab(status === 'approved' || status === 'denied' ? 'requests' : 'logs');
+        }
+    } catch (error) {
+        console.error('Error updating reservation status:', error);
+    }
 }
 
 // =============================================
@@ -1694,10 +1919,16 @@ function displayAnnouncements(announcements) {
     }
 
     const html = announcements.map(announcement => `
-        <div class="announcement-item">
-            <h4>${escapeHtml(announcement.title)}</h4>
+        <div class="announcement-item priority-${announcement.priority || 'normal'}">
+            <div class="announcement-header">
+                <h4>${escapeHtml(announcement.title)}</h4>
+                <span class="priority-badge ${announcement.priority || 'normal'}">${(announcement.priority || 'normal').toUpperCase()}</span>
+            </div>
             <p>${escapeHtml(announcement.content)}</p>
-            <span class="announcement-date">${formatDate(announcement.created_at)}</span>
+            <div class="announcement-footer">
+                <span class="announcement-author"><i class="fas fa-user-shield"></i> ${announcement.admin_first_name} ${announcement.admin_last_name}</span>
+                <span class="announcement-date"><i class="far fa-calendar-alt"></i> ${formatDate(announcement.created_at)}</span>
+            </div>
         </div>
     `).join('');
 
@@ -1922,7 +2153,13 @@ function setupEventListeners() {
                     const result = await checkInResponse.json();
                     showCheckInSuccessModal(student, labRoom, purpose);
 
-                    // Refresh sit-in records table if on view records section
+                    // Switch to Sit-in Management section to see the new record
+                    showSection('sitIn');
+                    
+                    // Refresh active sit-in records table
+                    loadActiveSitins();
+                    
+                    // Also refresh all records table if needed
                     loadAllRecords();
 
                     // Close modal and reset form
@@ -1949,6 +2186,64 @@ function setupEventListeners() {
 
             if (title && content) {
                 createAnnouncement(title, content, priority);
+            }
+        });
+    }
+
+    // Student Reservation form submission
+    const resForm = document.getElementById('reservationForm');
+    if (resForm) {
+        resForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const formData = {
+                user_id: currentUser.id,
+                lab_room: document.getElementById('resLabRoom').value,
+                date: document.getElementById('resDate').value,
+                time: document.getElementById('resTime').value,
+                purpose: document.getElementById('resPurpose').value
+            };
+
+            try {
+                const response = await fetch('/api/reservations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+                if (response.ok) {
+                    showSuccessModal('Success', 'Reservation request submitted!');
+                    resForm.reset();
+                }
+            } catch (error) {
+                console.error('Error submitting reservation:', error);
+            }
+        });
+    }
+
+    // Student Feedback form submission
+    const feedbackForm = document.getElementById('studentFeedbackForm');
+    if (feedbackForm) {
+        feedbackForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const rating = document.querySelector('input[name="rating"]:checked')?.value;
+            const comment = document.getElementById('feedbackComment').value;
+
+            if (!rating) {
+                alert('Please select a rating');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/feedbacks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: currentUser.id, rating, comment })
+                });
+                if (response.ok) {
+                    showSuccessModal('Success', 'Thank you for your feedback!');
+                    feedbackForm.reset();
+                }
+            } catch (error) {
+                console.error('Error submitting feedback:', error);
             }
         });
     }
@@ -2056,4 +2351,39 @@ function showNoHistoryMessage() {
     const noHistoryMsg = document.getElementById('noHistoryMessage');
     if (tableBody) tableBody.innerHTML = '';
     if (noHistoryMsg) noHistoryMsg.style.display = 'block';
+}
+
+// =============================================
+// Admin UI Helpers (Missing Functions)
+// =============================================
+function closeSitInModal() {
+    const modal = document.getElementById('sitInModal');
+    if (modal) modal.classList.add('hidden');
+    const form = document.getElementById('adminSitInForm');
+    if (form) form.reset();
+}
+
+function showCheckInSuccessModal(student, labRoom, purpose) {
+    alert(`Successfully Sat-in ${student.first_name} ${student.last_name} in ${labRoom} for ${purpose}.`);
+}
+
+function showErrorModal(title, message) {
+    alert(`${title}: ${message}`);
+}
+
+function showSuccessModal(title, message) {
+    alert(`${title}: ${message}`);
+}
+
+function redirectToSitInFormFromModal(student) {
+    const modal = document.getElementById('sitInModal');
+    if (!modal) return;
+    
+    // Populate form
+    document.getElementById('studentIdNumber').value = student.id_number;
+    document.getElementById('studentName').value = `${student.first_name} ${student.last_name}`;
+    document.getElementById('studentSession').value = student.remaining_sessions || 30;
+    
+    // Show modal
+    modal.classList.remove('hidden');
 }

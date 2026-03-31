@@ -171,6 +171,39 @@ function initializeDatabase() {
         // Create indexes for sit-in queries
         db.run(`CREATE INDEX IF NOT EXISTS idx_sit_in_user_id ON sit_in_records(user_id)`);
         db.run(`CREATE INDEX IF NOT EXISTS idx_sit_in_date ON sit_in_records(date)`);
+
+        // Feedbacks Table
+        db.run(`
+            CREATE TABLE IF NOT EXISTS feedbacks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                rating INTEGER,
+                comment TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `, (err) => {
+            if (err) console.error('Error creating feedbacks table:', err.message);
+            else console.log('Feedbacks table created/verified');
+        });
+
+        // Reservations Table
+        db.run(`
+            CREATE TABLE IF NOT EXISTS reservations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                lab_room TEXT NOT NULL,
+                date DATE NOT NULL,
+                time TIME NOT NULL,
+                purpose TEXT NOT NULL,
+                status TEXT DEFAULT 'pending',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `, (err) => {
+            if (err) console.error('Error creating reservations table:', err.message);
+            else console.log('Reservations table created/verified');
+        });
     });
 }
 
@@ -469,16 +502,35 @@ app.post('/api/sitin/checkout', (req, res) => {
         return res.status(400).json({ error: 'Record ID is required' });
     }
 
-    const query = `UPDATE sit_in_records SET time_out = CURRENT_TIMESTAMP WHERE id = ? AND time_out IS NULL`;
+    // First, find the user associated with this record to decrement their sessions
+    const findUserQuery = `SELECT user_id FROM sit_in_records WHERE id = ?`;
+    
+    db.get(findUserQuery, [record_id], (err, record) => {
+        if (err || !record) {
+            return res.status(500).json({ error: 'Failed to find record user: ' + (err ? err.message : 'Not found') });
+        }
 
-    db.run(query, [record_id], function (err) {
-        if (err) {
-            return res.status(500).json({ error: 'Check-out failed: ' + err.message });
-        }
-        if (this.changes === 0) {
-            return res.status(404).json({ error: 'Active sit-in record not found' });
-        }
-        res.json({ message: 'Check-out successful' });
+        const userId = record.user_id;
+
+        // Start transaction-like serialize to ensure atomic updates
+        db.serialize(() => {
+            // 1. Update the record time_out
+            const updateRecordQuery = `UPDATE sit_in_records SET time_out = CURRENT_TIMESTAMP WHERE id = ? AND time_out IS NULL`;
+            db.run(updateRecordQuery, [record_id], function(err) {
+                if (err || this.changes === 0) {
+                    return res.status(500).json({ error: 'Failed to update record time_out' });
+                }
+
+                // 2. Decrement student sessions
+                const updateSessionsQuery = `UPDATE users SET remaining_sessions = MAX(0, remaining_sessions - 1) WHERE id = ? AND role = 'student'`;
+                db.run(updateSessionsQuery, [userId], function(err) {
+                    if (err) {
+                        console.error('Failed to decrement sessions:', err.message);
+                    }
+                    res.json({ message: 'Check-out successful and session decremented' });
+                });
+            });
+        });
     });
 });
 
@@ -515,6 +567,109 @@ app.get('/api/sitin/records/user/:user_id', (req, res) => {
         }
         res.json({ records: records });
     });
+});
+
+// =============================================
+// Feedbacks API
+// =============================================
+
+// Submit feedback (student)
+app.post('/api/feedbacks', (req, res) => {
+    const { user_id, rating, comment } = req.body;
+    
+    if (!user_id || !rating) {
+        return res.status(400).json({ error: 'User ID and rating are required' });
+    }
+
+    const query = `INSERT INTO feedbacks (user_id, rating, comment) VALUES (?, ?, ?)`;
+    db.run(query, [user_id, rating, comment], function(err) {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to submit feedback: ' + err.message });
+        }
+        res.status(201).json({ message: 'Feedback submitted successfully', id: this.lastID });
+    });
+});
+
+// =============================================
+// Reservations API
+// =============================================
+
+// Submit reservation request (student)
+app.post('/api/reservations', (req, res) => {
+    const { user_id, lab_room, date, time, purpose } = req.body;
+
+    if (!user_id || !lab_room || !date || !time || !purpose) {
+        return res.status(400).json({ error: 'All fields are required' });
+    }
+
+    const query = `INSERT INTO reservations (user_id, lab_room, date, time, purpose) VALUES (?, ?, ?, ?, ?)`;
+    db.run(query, [user_id, lab_room, date, time, purpose], function(err) {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to submit reservation: ' + err.message });
+        }
+        res.status(201).json({ message: 'Reservation request submitted', id: this.lastID });
+    });
+});
+
+// Get user's own reservations
+app.get('/api/reservations/user/:user_id', (req, res) => {
+    const { user_id } = req.params;
+    const query = `SELECT * FROM reservations WHERE user_id = ? ORDER BY date DESC, time DESC`;
+    
+    db.all(query, [user_id], (err, reservations) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to fetch reservations: ' + err.message });
+        }
+        res.json(reservations);
+    });
+});
+
+// Get all reservations (admin)
+app.get('/api/admin/reservations', (req, res) => {
+    const query = `
+        SELECT r.*, u.id_number, u.first_name, u.last_name
+        FROM reservations r
+        JOIN users u ON r.user_id = u.id
+        ORDER BY r.date DESC, r.time DESC
+    `;
+    
+    db.all(query, [], (err, reservations) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to fetch reservations: ' + err.message });
+        }
+        res.json(reservations);
+    });
+});
+
+// Update reservation status (admin)
+app.put('/api/admin/reservations/:id/status', (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!['pending', 'approved', 'denied', 'completed'].includes(status)) {
+        return res.status(400).json({ error: 'Invalid status' });
+    }
+
+    const query = `UPDATE reservations SET status = ? WHERE id = ?`;
+    db.run(query, [status, id], function(err) {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to update reservation: ' + err.message });
+        }
+        res.json({ message: 'Reservation status updated' });
+    });
+});
+
+// Get computer status (mock for now)
+app.get('/api/admin/computer-status', (req, res) => {
+    // Mocking 10 PCs per lab
+    const labs = ["Lab 524", "Lab 526", "Lab 528", "Lab 530", "Lab 544", "Lab 542"];
+    const status = labs.map(lab => ({
+        lab_name: lab,
+        total_pcs: 30,
+        available_pcs: Math.floor(Math.random() * 31),
+        active_sitins: Math.floor(Math.random() * 10)
+    }));
+    res.json(status);
 });
 
 // Update user profile
@@ -682,7 +837,15 @@ app.get('/api/admin/stats', (req, res) => {
                     stats.todayReservations = row.count;
                 }
 
-                res.json(stats);
+                // Get total feedbacks
+                db.get(`SELECT COUNT(*) as count FROM feedbacks`, [], (err, row) => {
+                    if (err) {
+                        stats.totalFeedbacks = 0;
+                    } else {
+                        stats.totalFeedbacks = row.count;
+                    }
+                    res.json(stats);
+                });
             });
         });
     });
@@ -692,7 +855,7 @@ app.get('/api/admin/stats', (req, res) => {
 app.get('/api/admin/records', (req, res) => {
     const { date, lab_room } = req.query;
     let query = `
-        SELECT sr.*, u.id_number, u.first_name, u.last_name, u.course
+        SELECT sr.*, u.id_number, u.first_name, u.last_name, u.course, u.remaining_sessions
         FROM sit_in_records sr
         JOIN users u ON sr.user_id = u.id
         WHERE 1=1
@@ -721,7 +884,7 @@ app.get('/api/admin/records', (req, res) => {
 // Get currently active sit-ins (admin)
 app.get('/api/admin/active-sitins', (req, res) => {
     const query = `
-        SELECT sr.*, u.id_number, u.first_name, u.last_name, u.course, u.course_level
+        SELECT sr.*, u.id_number, u.first_name, u.last_name, u.course, u.course_level, u.remaining_sessions
         FROM sit_in_records sr
         JOIN users u ON sr.user_id = u.id
         WHERE sr.time_out IS NULL

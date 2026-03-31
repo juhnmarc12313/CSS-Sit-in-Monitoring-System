@@ -455,7 +455,70 @@
           <i class="fas fa-calendar-alt"></i> Reservation
         </h2>
 
-        <div class="reservation-container animate__animated animate__fadeInUp">
+        <!-- Admin Reservation View -->
+        <div id="adminReservationView" style="display: none;" class="animate__animated animate__fadeInUp">
+          <div class="tab-container">
+            <div class="tabs">
+              <button class="tab-btn active" onclick="switchReservationTab('computerControl')">Computer Control</button>
+              <button class="tab-btn" onclick="switchReservationTab('requests')">Reservation Requests</button>
+              <button class="tab-btn" onclick="switchReservationTab('logs')">Reservation Logs</button>
+            </div>
+
+            <!-- Computer Control Tab -->
+            <div id="computerControlTab" class="tab-content">
+              <h3><i class="fas fa-desktop"></i> Laboratory Computer Status</h3>
+              <div class="lab-status-grid" id="labStatusGrid">
+                <!-- Lab status cards will be loaded here -->
+              </div>
+            </div>
+
+            <!-- Reservation Requests Tab -->
+            <div id="requestsTab" class="tab-content hidden">
+              <h3><i class="fas fa-clock"></i> Pending Requests</h3>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID Number</th>
+                      <th>Student</th>
+                      <th>Lab Room</th>
+                      <th>Date/Time</th>
+                      <th>Purpose</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reservationRequestsTableBody">
+                    <!-- Requests will be loaded here -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Reservation Logs Tab -->
+            <div id="logsTab" class="tab-content hidden">
+              <h3><i class="fas fa-history"></i> Reservation History</h3>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Time</th>
+                      <th>Student</th>
+                      <th>Lab</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reservationLogsTableBody">
+                    <!-- Logs will be loaded here -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Student Reservation View -->
+        <div id="studentReservationView" class="reservation-container animate__animated animate__fadeInUp">
           <div class="reservation-form-card">
             <h3>Reserve a Laboratory Session</h3>
             <form id="reservationForm">
@@ -511,6 +574,35 @@
               <li>Please arrive on time. Your slot will be given to others after 15 minutes.</li>
               <li>Maximum of 3 hours per session.</li>
             </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Feedback Section (New for Students) -->
+      <section class="content-section hidden" id="studentFeedbackSection">
+        <h2 class="section-title animate__animated animate__fadeInUp">
+          <i class="fas fa-comment-dots"></i> Feedback
+        </h2>
+        <div class="feedback-container animate__animated animate__fadeInUp">
+          <div class="feedback-card">
+            <h3>Share your experience</h3>
+            <form id="studentFeedbackForm">
+              <div class="form-group">
+                <label>Rating</label>
+                <div class="star-rating">
+                  <input type="radio" name="rating" value="5" id="5"><label for="5">☆</label>
+                  <input type="radio" name="rating" value="4" id="4"><label for="4">☆</label>
+                  <input type="radio" name="rating" value="3" id="3"><label for="3">☆</label>
+                  <input type="radio" name="rating" value="2" id="2"><label for="2">☆</label>
+                  <input type="radio" name="rating" value="1" id="1"><label for="1">☆</label>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="feedbackComment">Comment</label>
+                <textarea id="feedbackComment" rows="4" placeholder="Tell us how we can improve..." required></textarea>
+              </div>
+              <button type="submit" class="btn-primary">Submit Feedback</button>
+            </form>
           </div>
         </div>
       </section>
@@ -741,8 +833,8 @@
                 <option value="Lab 2">Laboratory 526</option>
                 <option value="Lab 3">Laboratory 528</option>
                 <option value="Lab 4">Laboratory 530</option>
-                <option value="Lab 5">Laboratory 544</option>
-                <option value="Lab 6">Laboratory 542</option>
+                <option value="Lab 5">Laboratory 542</option>
+                <option value="Lab 6">Laboratory 544</option>
               </select>
             </div>
             <div class="form-group">
@@ -759,7 +851,7 @@
             <div class="form-actions">
               <button type="button" class="btn-secondary" onclick="closeSitInModal()">Cancel</button>
               <button type="submit" class="btn-primary">
-                <i class="fas fa-sign-in-alt"></i> Check In
+                <i class="fas fa-sign-in-alt"></i> Sit In
               </button>
             </div>
           </form>
@@ -783,6 +875,7 @@
                   <th>Lab Room</th>
                   <th>Purpose</th>
                   <th>Time In</th>
+                  <th>Remaining Session</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -790,7 +883,8 @@
                 <!-- Active sit-ins data will be loaded here -->
               </tbody>
             </table>
-            <p id="noActiveSitinsMessage" class="no-data-message" style="display: none;">No students currently sitting in.</p>
+            <p id="noActiveSitinsMessage" class="no-data-message" style="display: none;">No students currently sitting
+              in.</p>
           </div>
         </div>
       </section>
@@ -811,11 +905,12 @@
               <label for="filterLabRoom">Lab Room:</label>
               <select id="filterLabRoom" onchange="filterRecords()">
                 <option value="">All Labs</option>
-                <option value="Lab 1">Lab 1</option>
-                <option value="Lab 2">Lab 2</option>
-                <option value="Lab 3">Lab 3</option>
-                <option value="Lab 4">Lab 4</option>
-                <option value="Lab 5">Lab 5</option>
+                <option value="Lab 1">Lab 524</option>
+                <option value="Lab 2">Lab 526</option>
+                <option value="Lab 3">Lab 528</option>
+                <option value="Lab 4">Lab 530</option>
+                <option value="Lab 5">Lab 542</option>
+                <option value="Lab 6">Lab 544</option>
               </select>
             </div>
             <button class="btn-secondary" onclick="clearRecordFilters()">
@@ -834,6 +929,7 @@
                   <th>Purpose</th>
                   <th>Time In</th>
                   <th>Time Out</th>
+                  <th>Remaining Session</th>
                   <th>Duration</th>
                 </tr>
               </thead>
