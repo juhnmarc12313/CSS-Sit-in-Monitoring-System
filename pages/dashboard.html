@@ -773,50 +773,24 @@
         </h2>
 
         <div class="sitIn-container animate__animated animate__fadeInUp">
-          <div class="sitIn-form-card">
-            <h3>Record Sit-in</h3>
-            <form id="adminSitInForm">
-              <div class="form-group">
-                <label for="studentIdNumber">Student ID Number</label>
-                <input type="text" id="studentIdNumber" required placeholder="Search student ID" />
-              </div>
-              <div class="form-group">
-                <label for="studentName">Student Name</label>
-                <input type="text" id="studentName" required placeholder="Enter student name" />
-              </div>
-              <div class="form-group">
-                <label for="studentSession">Remaining Session</label>
-                <input type="number" id="studentSession" required min="0" value="30" />
-              </div>
-              <div class="form-group">
-                <label for="labRoom">Laboratory Room</label>
-                <select id="labRoom" required>
-                  <option value="">Select Laboratory</option>
-                  <option value="Lab 1">Laboratory 524</option>
-                  <option value="Lab 2">Laboratory 526</option>
-                  <option value="Lab 3">Laboratory 528</option>
-                  <option value="Lab 4">Laboratory 530</option>
-                  <option value="Lab 5">Laboratory 544</option>
-                  <option value="Lab 6">Laboratory 542</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="sitInPurpose">Purpose</label>
-                <select id="sitInPurpose" required>
-                  <option value="">Select Purpose</option>
-                  <option value="Coding">Coding/Programming</option>
-                  <option value="Research">Research</option>
-                  <option value="Assignment">Assignment</option>
-                  <option value="Project">Project Development</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div class="form-actions">
-                <button type="submit" class="btn-primary">
-                  <i class="fas fa-sign-in-alt"></i> Check In
-                </button>
-              </div>
-            </form>
+          <div class="table-container">
+            <h3>Current Sit-ins</h3>
+            <table id="activeSitinsTable">
+              <thead>
+                <tr>
+                  <th>ID Number</th>
+                  <th>Name</th>
+                  <th>Lab Room</th>
+                  <th>Purpose</th>
+                  <th>Time In</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="activeSitinsTableBody">
+                <!-- Active sit-ins data will be loaded here -->
+              </tbody>
+            </table>
+            <p id="noActiveSitinsMessage" class="no-data-message" style="display: none;">No students currently sitting in.</p>
           </div>
         </div>
       </section>

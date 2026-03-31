@@ -70,7 +70,6 @@ body {
 
 /* Main Content */
 main {
-    margin-top: 60px;
     display: flex;
     justify-content: center;
     align-items: flex-start;
@@ -80,6 +79,7 @@ main {
 
 /* Register Section - Side by Side Cards */
 .Register {
+    margin-top: 60px;
     display: flex;
     justify-content: center;
     gap: 30px;

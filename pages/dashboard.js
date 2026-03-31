@@ -1132,6 +1132,7 @@ function showSection(sectionName) {
             if (userRole === 'admin') {
                 document.getElementById('sitInSection').classList.remove('hidden');
                 activateAdminNavLink(3);
+                loadActiveSitins(); // Load active sit-ins when section is shown
             }
             break;
         case 'viewRecords':
@@ -1417,6 +1418,77 @@ async function removeProfilePicture() {
         showMessage('An error occurred', 'error');
     }
 
+    showLoading(false);
+}
+
+// =============================================
+// Admin Sit-in Management
+// =============================================
+async function loadActiveSitins() {
+    try {
+        const response = await fetch('/api/admin/active-sitins');
+        if (response.ok) {
+            const records = await response.json();
+            displayActiveSitins(records);
+        }
+    } catch (error) {
+        console.error('Error loading active sit-ins:', error);
+    }
+}
+
+function displayActiveSitins(records) {
+    const tbody = document.getElementById('activeSitinsTableBody');
+    const noMsg = document.getElementById('noActiveSitinsMessage');
+    if (!tbody) return;
+
+    if (!records || records.length === 0) {
+        tbody.innerHTML = '';
+        noMsg.style.display = 'block';
+        return;
+    }
+
+    noMsg.style.display = 'none';
+    tbody.innerHTML = records.map(record => `
+        <tr>
+            <td>${record.id_number}</td>
+            <td>${record.first_name} ${record.last_name}</td>
+            <td>${record.lab_room}</td>
+            <td>${record.purpose}</td>
+            <td>${formatTime(record.time_in)}</td>
+            <td>
+                <button class="btn-danger btn-small" onclick="handleAdminCheckout(${record.id})" title="Logout Student">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function handleAdminCheckout(recordId) {
+    if (!confirm('Are you sure you want to log out this student?')) return;
+
+    showLoading(true);
+    try {
+        const response = await fetch('/api/sitin/checkout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ record_id: recordId })
+        });
+
+        if (response.ok) {
+            showSuccessModal('Checkout Successful', 'Student has been logged out successfully.');
+            loadActiveSitins(); // Refresh the list
+            loadAdminStats(); // Update dashboard stats
+        } else {
+            const error = await response.json();
+            showErrorModal('Checkout Failed', error.error || 'Failed to check out student');
+        }
+    } catch (error) {
+        console.error('Error during admin checkout:', error);
+        showErrorModal('Error', 'An error occurred during checkout');
+    }
     showLoading(false);
 }
 

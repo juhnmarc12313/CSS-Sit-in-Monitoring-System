@@ -718,6 +718,24 @@ app.get('/api/admin/records', (req, res) => {
     });
 });
 
+// Get currently active sit-ins (admin)
+app.get('/api/admin/active-sitins', (req, res) => {
+    const query = `
+        SELECT sr.*, u.id_number, u.first_name, u.last_name, u.course, u.course_level
+        FROM sit_in_records sr
+        JOIN users u ON sr.user_id = u.id
+        WHERE sr.time_out IS NULL
+        ORDER BY sr.time_in DESC
+    `;
+
+    db.all(query, [], (err, records) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to fetch active sit-ins: ' + err.message });
+        }
+        res.json(records);
+    });
+});
+
 // Search students (admin)
 app.get('/api/admin/search', (req, res) => {
     const { q } = req.query;
