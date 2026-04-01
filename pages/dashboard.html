@@ -407,44 +407,105 @@
         </h2>
 
         <div class="history-container animate__animated animate__fadeInUp">
-          <div class="history-filters">
-            <div class="filter-group">
-              <label for="filterMonth">Month:</label>
-              <input type="month" id="filterMonth" onchange="filterHistory()" />
+          <!-- History Stats Overview -->
+          <div class="history-stats-grid">
+            <div class="history-stat-card">
+              <div class="stat-icon-wrapper blue">
+                <i class="fas fa-list-check"></i>
+              </div>
+              <div class="stat-content">
+                <p class="stat-label">Total Sessions</p>
+                <h4 id="historyTotalSessions">0</h4>
+              </div>
             </div>
-            <div class="filter-group">
-              <label for="filterLab">Lab Room:</label>
-              <select id="filterLab" onchange="filterHistory()">
-                <option value="">All Labs</option>
-                <option value="Lab 1">Lab 1</option>
-                <option value="Lab 2">Lab 2</option>
-                <option value="Lab 3">Lab 3</option>
-                <option value="Lab 4">Lab 4</option>
-                <option value="Lab 5">Lab 5</option>
-              </select>
+            <div class="history-stat-card">
+              <div class="stat-icon-wrapper green">
+                <i class="fas fa-clock"></i>
+              </div>
+              <div class="stat-content">
+                <p class="stat-label">Total Time</p>
+                <h4 id="historyTotalTime">0h 0m</h4>
+              </div>
             </div>
-            <button class="btn-secondary" onclick="clearFilters()">
-              <i class="fas fa-times"></i> Clear Filters
-            </button>
+            <div class="history-stat-card">
+              <div class="stat-icon-wrapper purple">
+                <i class="fas fa-calendar-day"></i>
+              </div>
+              <div class="stat-content">
+                <p class="stat-label">Last Session</p>
+                <h4 id="historyLastSession">None</h4>
+              </div>
+            </div>
           </div>
 
-          <div class="table-container">
-            <table id="fullHistoryTable">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Lab Room</th>
-                  <th>Purpose</th>
-                  <th>Time In</th>
-                  <th>Time Out</th>
-                  <th>Duration</th>
-                </tr>
-              </thead>
-              <tbody id="fullHistoryTableBody">
-                <!-- Full history data will be loaded here -->
-              </tbody>
-            </table>
-            <p id="noFullHistoryMessage" class="no-data-message">No sit-in records found.</p>
+          <!-- History Filters Card -->
+          <div class="history-filters-card">
+            <div class="card-header">
+              <h3><i class="fas fa-filter"></i> Search & Filter</h3>
+              <button class="btn-clear" onclick="clearFilters()">
+                <i class="fas fa-rotate-left"></i> Reset
+              </button>
+            </div>
+            <div class="filters-body">
+              <div class="filter-group">
+                <label for="filterMonth">Month</label>
+                <div class="input-with-icon">
+                  <i class="fas fa-calendar-alt"></i>
+                  <input type="month" id="filterMonth" onchange="filterHistory()" />
+                </div>
+              </div>
+              <div class="filter-group">
+                <label for="filterLab">Laboratory Room</label>
+                <div class="input-with-icon">
+                  <i class="fas fa-laptop"></i>
+                  <select id="filterLab" onchange="filterHistory()">
+                    <option value="">All Laboratories</option>
+                    <option value="Lab 1">Lab 524</option>
+                    <option value="Lab 2">Lab 526</option>
+                    <option value="Lab 3">Lab 528</option>
+                    <option value="Lab 4">Lab 530</option>
+                    <option value="Lab 5">Lab 544</option>
+                    <option value="Lab 6">Lab 542</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- History Table Container -->
+          <div class="premium-table-wrapper">
+            <div class="table-header">
+              <h3>Log Records</h3>
+              <div class="table-actions">
+                <button class="btn-export" onclick="exportHistory()">
+                  <i class="fas fa-file-export"></i> Export Logs
+                </button>
+              </div>
+            </div>
+            <div class="table-scroll-area">
+              <table id="fullHistoryTable">
+                <thead>
+                  <tr>
+                    <th><i class="fas fa-calendar"></i> Date</th>
+                    <th><i class="fas fa-door-open"></i> Lab Room</th>
+                    <th><i class="fas fa-tag"></i> Purpose</th>
+                    <th><i class="fas fa-sign-in-alt"></i> Time In</th>
+                    <th><i class="fas fa-sign-out-alt"></i> Time Out</th>
+                    <th><i class="fas fa-stopwatch"></i> Duration</th>
+                  </tr>
+                </thead>
+                <tbody id="fullHistoryTableBody">
+                  <!-- Full history data will be loaded here -->
+                </tbody>
+              </table>
+              <div id="noFullHistoryMessage" class="empty-state hidden">
+                <div class="empty-icon">
+                  <i class="fas fa-clipboard-list"></i>
+                </div>
+                <h3>No records found</h3>
+                <p>Try adjusting your search filters or check back later.</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>

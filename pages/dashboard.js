@@ -1242,27 +1242,68 @@ function updateSessionsRemaining(records) {
 }
 
 function displayFullHistory() {
-    const tableBody = document.getElementById('fullHistoryTableBody');
-    const noHistoryMsg = document.getElementById('noFullHistoryMessage');
+    renderHistoryTable(allHistoryData);
+    updateHistoryStats(allHistoryData);
+}
 
-    if (!allHistoryData || allHistoryData.length === 0) {
-        tableBody.innerHTML = '';
-        noHistoryMsg.style.display = 'block';
+function updateHistoryStats(records) {
+    const totalSessionsEl = document.getElementById('historyTotalSessions');
+    const totalTimeEl = document.getElementById('historyTotalTime');
+    const lastSessionEl = document.getElementById('historyLastSession');
+
+    if (!records || records.length === 0) {
+        if (totalSessionsEl) totalSessionsEl.textContent = '0';
+        if (totalTimeEl) totalTimeEl.textContent = '0h 0m';
+        if (lastSessionEl) lastSessionEl.textContent = 'None';
         return;
     }
 
-    noHistoryMsg.style.display = 'none';
+    // Total Sessions
+    if (totalSessionsEl) totalSessionsEl.textContent = records.length;
 
-    tableBody.innerHTML = allHistoryData.map(record => `
-        <tr>
-            <td>${formatDate(record.date)}</td>
-            <td>${record.lab_room || 'N/A'}</td>
-            <td>${record.purpose || 'N/A'}</td>
-            <td>${formatTime(record.time_in)}</td>
-            <td>${record.time_out ? formatTime(record.time_out) : '-'}</td>
-            <td>${calculateDuration(record.time_in, record.time_out)}</td>
-        </tr>
-    `).join('');
+    // Total Time
+    let totalMinutes = 0;
+    records.forEach(record => {
+        if (record.time_in && record.time_out) {
+            const [inH, inM] = record.time_in.split(':').map(Number);
+            const [outH, outM] = record.time_out.split(':').map(Number);
+            totalMinutes += (outH * 60 + outM) - (inH * 60 + inM);
+        }
+    });
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    if (totalTimeEl) totalTimeEl.textContent = `${hours}h ${mins}m`;
+
+    // Last Session
+    const sortedRecords = [...records].sort((a, b) => new Date(b.date) - new Date(a.date));
+    if (lastSessionEl) lastSessionEl.textContent = formatDateShort(sortedRecords[0].date);
+}
+
+function renderHistoryTable(records) {
+    const tableBody = document.getElementById('fullHistoryTableBody');
+    const emptyState = document.getElementById('noFullHistoryMessage');
+
+    if (!records || records.length === 0) {
+        tableBody.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+    }
+
+    emptyState.classList.add('hidden');
+    tableBody.innerHTML = records.map((record, index) => {
+        const duration = calculateDuration(record.time_in, record.time_out);
+        const delay = (index * 0.05).toFixed(2);
+        return `
+            <tr class="animate__animated animate__fadeInUp" style="animation-delay: ${delay}s">
+                <td style="font-weight: 600; color: #5e3b71;">${formatDate(record.date)}</td>
+                <td><span class="status-badge" style="background: #f1f5f9; color: #475569;">${record.lab_room || 'N/A'}</span></td>
+                <td>${record.purpose || 'N/A'}</td>
+                <td><i class="far fa-clock" style="color: #10b981; margin-right: 5px;"></i> ${formatTime(record.time_in)}</td>
+                <td><i class="far fa-clock" style="color: #ef4444; margin-right: 5px;"></i> ${record.time_out ? formatTime(record.time_out) : '-'}</td>
+                <td style="font-weight: 700; color: #1e293b;">${duration}</td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function filterHistory() {
@@ -1285,31 +1326,48 @@ function filterHistory() {
         );
     }
 
-    const tableBody = document.getElementById('fullHistoryTableBody');
-    const noHistoryMsg = document.getElementById('noFullHistoryMessage');
-
-    if (filteredData.length === 0) {
-        tableBody.innerHTML = '';
-        noHistoryMsg.style.display = 'block';
-    } else {
-        noHistoryMsg.style.display = 'none';
-        tableBody.innerHTML = filteredData.map(record => `
-            <tr>
-                <td>${formatDate(record.date)}</td>
-                <td>${record.lab_room || 'N/A'}</td>
-                <td>${record.purpose || 'N/A'}</td>
-                <td>${formatTime(record.time_in)}</td>
-                <td>${record.time_out ? formatTime(record.time_out) : '-'}</td>
-                <td>${calculateDuration(record.time_in, record.time_out)}</td>
-            </tr>
-        `).join('');
-    }
+    renderHistoryTable(filteredData);
+    updateHistoryStats(filteredData);
 }
 
 function clearFilters() {
-    document.getElementById('filterMonth').value = '';
-    document.getElementById('filterLab').value = '';
+    const monthInput = document.getElementById('filterMonth');
+    const labSelect = document.getElementById('filterLab');
+    if (monthInput) monthInput.value = '';
+    if (labSelect) labSelect.value = '';
     displayFullHistory();
+}
+
+function formatDateShort(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+    });
+}
+
+function exportHistory() {
+    if (!allHistoryData || allHistoryData.length === 0) {
+        alert('No data to export');
+        return;
+    }
+
+    // Basic CSV export
+    let csv = 'Date,Lab Room,Purpose,Time In,Time Out,Duration\n';
+    allHistoryData.forEach(r => {
+        csv += `${r.date},"${r.lab_room}","${r.purpose}",${r.time_in},${r.time_out},${calculateDuration(r.time_in, r.time_out)}\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('hidden', '');
+    a.setAttribute('href', url);
+    a.setAttribute('download', `SitIn_History_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
 }
 
 // =============================================
