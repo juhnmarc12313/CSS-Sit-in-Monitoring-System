@@ -112,34 +112,78 @@ function displayStudents(students) {
     const tbody = document.getElementById('studentsTableBody');
     if (!tbody) return;
 
+    // Update statistics
+    if (students) {
+        document.getElementById('mgmtTotalStudents').textContent = students.length;
+        // Simple heuristic for "active" - students who have at least one sit-in record in the last 30 days
+        // For now, we'll just show the total registered count in multiple stats since we don't have complex activity tracking yet
+        document.getElementById('mgmtActiveStudents').textContent = students.filter(s => s.is_active).length;
+        document.getElementById('mgmtNewStudents').textContent = students.slice(-5).length; // Last 5 added
+    }
+
     if (!students || students.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7">No students found</td></tr>';
         return;
     }
 
-    tbody.innerHTML = students.map(student => `
-        <tr>
-            <td>${student.id_number}</td>
-            <td>${student.first_name} ${student.last_name}</td>
-            <td>${student.course}</td>
-            <td>${student.course_level}</td>
-            <td>${student.email}</td>
-            <td>
-                <span id="sessions-display-${student.id}">${student.remaining_sessions || 0}</span>
-            </td>
-            <td>
-                <button class="btn-icon" onclick="editStudentSessions(${student.id}, ${student.remaining_sessions || 0})" title="Edit Sessions">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="btn-icon" onclick="viewStudent(${student.id})" title="View">
-                    <i class="fas fa-eye"></i>
-                </button>
-                <button class="btn-icon btn-danger" onclick="deleteStudent(${student.id}, '${student.first_name} ${student.last_name}')" title="Delete">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = students.map((student, index) => {
+        const delay = (index * 0.03).toFixed(2);
+        const statusClass = student.is_active ? 'status-active' : 'status-inactive';
+        const statusText = student.is_active ? 'Active' : 'Inactive';
+        
+        return `
+            <tr class="animate__animated animate__fadeInUp" style="animation-delay: ${delay}s">
+                <td><span class="id-badge">${student.id_number}</span></td>
+                <td>
+                    <div class="user-info-cell">
+                        <div class="avatar-mini">${student.first_name.charAt(0)}</div>
+                        <div class="name-details">
+                            <span class="full-name">${student.first_name} ${student.last_name}</span>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="course-cell">
+                        <span class="course-code">${student.course}</span>
+                        <span class="year-level">${student.course_level} Year</span>
+                    </div>
+                </td>
+                <td><span class="email-text">${student.email}</span></td>
+                <td>
+                    <div class="sessions-cell">
+                        <span class="session-count ${student.remaining_sessions < 5 ? 'low' : ''}">${student.remaining_sessions || 0}</span>
+                        <span class="session-label">left</span>
+                    </div>
+                </td>
+                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="btn-action edit" onclick="editStudentSessions(${student.id}, ${student.remaining_sessions || 0})" title="Edit Sessions">
+                            <i class="fas fa-plus-circle"></i>
+                        </button>
+                        <button class="btn-action view" onclick="viewStudent(${student.id})" title="View Profile">
+                            <i class="fas fa-user"></i>
+                        </button>
+                        <button class="btn-action delete" onclick="deleteStudent(${student.id}, '${student.first_name} ${student.last_name}')" title="Delete">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function filterStudentTable() {
+    const input = document.getElementById('studentMgmtSearch');
+    const filter = input.value.toLowerCase();
+    const tbody = document.getElementById('studentsTableBody');
+    const rows = tbody.getElementsByTagName('tr');
+
+    for (let i = 0; i < rows.length; i++) {
+        const text = rows[i].textContent.toLowerCase();
+        rows[i].style.display = text.includes(filter) ? '' : 'none';
+    }
 }
 
 async function loadAllRecords() {
@@ -158,27 +202,91 @@ function displayRecords(records) {
     const tbody = document.getElementById('recordsTableBody');
     if (!tbody) return;
 
+    // Update Statistics
+    if (records) {
+        document.getElementById('archiveTotalRecords').textContent = records.length;
+        
+        // Calculate total hours
+        let totalMinutes = 0;
+        const labCounts = {};
+        
+        records.forEach(r => {
+            if (r.time_out) {
+                const [inH, inM] = r.time_in.split(':').map(Number);
+                const [outH, outM] = r.time_out.split(':').map(Number);
+                totalMinutes += (outH * 60 + outM) - (inH * 60 + inM);
+            }
+            labCounts[r.lab_room] = (labCounts[r.lab_room] || 0) + 1;
+        });
+        
+        const hours = Math.floor(totalMinutes / 60);
+        document.getElementById('totalLabHours').textContent = `${hours}h`;
+        
+        // Find most active lab
+        let bestLab = 'N/A';
+        let max = 0;
+        for (const lab in labCounts) {
+            if (labCounts[lab] > max) {
+                max = labCounts[lab];
+                bestLab = lab;
+            }
+        }
+        document.getElementById('mostActiveLab').textContent = bestLab;
+    }
+
     if (!records || records.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8">No records found</td></tr>';
         return;
     }
 
-    tbody.innerHTML = records.map(record => {
-        const duration = record.time_out ? calculateDuration(record.time_in, record.time_out) : 'Active';
+    tbody.innerHTML = records.map((record, index) => {
+        const delay = (index * 0.02).toFixed(2);
+        const duration = record.time_out ? calculateDuration(record.time_in, record.time_out) : '<span class="live-tag">Live</span>';
+        
         return `
-            <tr>
-                <td>${record.date}</td>
-                <td>${record.id_number}</td>
-                <td>${record.first_name} ${record.last_name}</td>
-                <td>${record.lab_room}</td>
-                <td>${record.purpose}</td>
-                <td>${record.time_in}</td>
-                <td>${record.time_out || 'Active'}</td>
-                <td>${record.remaining_sessions || 0}</td>
-                <td>${duration}</td>
+            <tr class="animate__animated animate__fadeIn" style="animation-delay: ${delay}s">
+                <td><span class="date-chip">${record.date}</span></td>
+                <td>
+                    <div class="student-info-mini">
+                        <span class="name">${record.first_name} ${record.last_name}</span>
+                    </div>
+                </td>
+                <td><span class="id-text">${record.id_number}</span></td>
+                <td><span class="lab-badge">${record.lab_room}</span></td>
+                <td>
+                    <div class="time-bundle">
+                        <span class="in"><i class="far fa-clock"></i> ${record.time_in}</span>
+                        <span class="arrow"><i class="fas fa-long-arrow-alt-right"></i></span>
+                        <span class="out">${record.time_out || 'Present'}</span>
+                    </div>
+                </td>
+                <td><span class="duration-text">${duration}</span></td>
+                <td><span class="duration-text" style="color: #64748b;">${record.remaining_sessions || 0}</span></td>
+                <td><span class="purpose-tag">${record.purpose}</span></td>
             </tr>
         `;
     }).join('');
+}
+
+function exportToCSV() {
+    const table = document.getElementById('recordsTable');
+    let csv = [];
+    const rows = table.querySelectorAll('tr');
+    
+    for (const row of rows) {
+        const cols = row.querySelectorAll('td, th');
+        const rowData = Array.from(cols).map(col => `"${col.innerText.replace(/"/g, '""')}"`);
+        csv.push(rowData.join(','));
+    }
+    
+    const csvContent = 'data:text/csv;charset=utf-8,' + csv.join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `sit_in_records_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 function calculateDuration(timeIn, timeOut) {
@@ -196,7 +304,12 @@ async function loadFeedbacks() {
         if (response.ok) {
             const feedbacks = await response.json();
             displayFeedbacks(feedbacks);
-            document.getElementById('totalFeedbacks').textContent = feedbacks.length || 0;
+            const totalCountEl = document.getElementById('totalFeedbacksCount');
+            if (totalCountEl) totalCountEl.textContent = feedbacks.length || 0;
+            
+            // Legacy counter for main dashboard
+            const legacyCountEl = document.getElementById('totalFeedbacks');
+            if (legacyCountEl) legacyCountEl.textContent = feedbacks.length || 0;
         }
     } catch (error) {
         console.error('Error loading feedbacks:', error);
@@ -204,27 +317,49 @@ async function loadFeedbacks() {
 }
 
 function displayFeedbacks(feedbacks) {
-    const tbody = document.getElementById('feedbacksTableBody');
-    if (!tbody) return;
+    const grid = document.getElementById('adminFeedbackGrid');
+    if (!grid) return;
 
     if (!feedbacks || feedbacks.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5">No feedbacks found</td></tr>';
+        grid.innerHTML = `
+            <div class="empty-monitor">
+                <i class="fas fa-comment-slash"></i>
+                <p>No student feedback reports currently available.</p>
+            </div>
+        `;
         return;
     }
 
-    tbody.innerHTML = feedbacks.map(feedback => `
-        <tr>
-            <td>${feedback.created_at}</td>
-            <td>${feedback.first_name} ${feedback.last_name}</td>
-            <td>${feedback.rating || 'N/A'}</td>
-            <td>${feedback.comment || 'No comment'}</td>
-            <td>
-                <button class="btn-icon">
-                    <i class="fas fa-reply"></i>
-                </button>
-            </td>
-        </tr>
-    `).join('');
+    grid.innerHTML = feedbacks.map((feedback, index) => {
+        const delay = (index * 0.05).toFixed(2);
+        const initial = feedback.first_name ? feedback.first_name.charAt(0).toUpperCase() : '?';
+        
+        return `
+            <div class="admin-feedback-card animate__animated animate__fadeInUp" style="animation-delay: ${delay}s">
+                <div class="feedback-card-header">
+                    <div class="feedback-user">
+                        <div class="feedback-avatar">${initial}</div>
+                        <div class="user-meta">
+                            <h4>${escapeHtml(feedback.first_name)} ${escapeHtml(feedback.last_name)}</h4>
+                            <span>ID: ${escapeHtml(feedback.id_number)}</span>
+                        </div>
+                    </div>
+                    <span class="feedback-date">${formatDate(feedback.created_at)}</span>
+                </div>
+                <div class="feedback-card-body">
+                    <p class="feedback-comment">"${escapeHtml(feedback.comment || 'No comment provided.')}"</p>
+                </div>
+                <div class="feedback-card-footer">
+                    <button class="btn-action view" title="Reply to student">
+                        <i class="fas fa-reply"></i>
+                    </button>
+                    <button class="btn-action delete" title="Dismiss feedback">
+                        <i class="fas fa-check"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 // Search student by ID number or name (admin)
@@ -1169,6 +1304,7 @@ function showSection(sectionName) {
         case 'studentFeedback':
             document.getElementById('studentFeedbackSection').classList.remove('hidden');
             activateNavLink(3);
+            loadUserFeedbacks();
             break;
         case 'notifications':
             document.getElementById('notificationsSection').classList.remove('hidden');
@@ -1503,6 +1639,12 @@ async function loadActiveSitins() {
         if (response.ok) {
             const records = await response.json();
             displayActiveSitins(records);
+            
+            const countBadge = document.getElementById('activeSitinsCount');
+            if (countBadge) countBadge.textContent = records.length || 0;
+            
+            const dashboardActiveDisp = document.getElementById('activeSitins');
+            if (dashboardActiveDisp) dashboardActiveDisp.textContent = records.length || 0;
         }
     } catch (error) {
         console.error('Error loading active sit-ins:', error);
@@ -1510,32 +1652,67 @@ async function loadActiveSitins() {
 }
 
 function displayActiveSitins(records) {
-    const tbody = document.getElementById('activeSitinsTableBody');
-    const noMsg = document.getElementById('noActiveSitinsMessage');
-    if (!tbody) return;
+    const grid = document.getElementById('activeSitinsGrid');
+    if (!grid) return;
 
     if (!records || records.length === 0) {
-        tbody.innerHTML = '';
-        noMsg.style.display = 'block';
+        grid.innerHTML = `
+            <div class="empty-monitor">
+                <i class="fas fa-desktop"></i>
+                <p>No active sessions. All labs are currently available.</p>
+            </div>
+        `;
         return;
     }
 
-    noMsg.style.display = 'none';
-    tbody.innerHTML = records.map(record => `
-        <tr>
-            <td>${record.id_number}</td>
-            <td>${record.first_name} ${record.last_name}</td>
-            <td>${record.lab_room}</td>
-            <td>${record.purpose}</td>
-            <td>${formatTime(record.time_in)}</td>
-            <td>${record.remaining_sessions || 0}</td>
-            <td>
-                <button class="btn-danger btn-small" onclick="handleAdminCheckout(${record.id})" title="Logout Student">
-                    <i class="fas fa-sign-out-alt"></i> Logout
-                </button>
-            </td>
-        </tr>
-    `).join('');
+    grid.innerHTML = records.map((record, index) => {
+        const delay = (index * 0.05).toFixed(2);
+        const initial = record.first_name ? record.first_name.charAt(0).toUpperCase() : '?';
+        
+        return `
+            <div class="active-monitor-card animate__animated animate__fadeInUp" style="animation-delay: ${delay}s">
+                <div class="monitor-card-header">
+                    <div class="student-profile">
+                        <div class="monitor-avatar">${initial}</div>
+                        <div class="monitor-info">
+                            <h4>${escapeHtml(record.first_name)} ${escapeHtml(record.last_name)}</h4>
+                            <span>ID: ${escapeHtml(record.id_number)}</span>
+                        </div>
+                    </div>
+                    <div class="lab-indicator">
+                        <span class="lab-tag">${escapeHtml(record.lab_room)}</span>
+                    </div>
+                </div>
+                
+                <div class="monitor-card-body">
+                    <div class="monitor-detail">
+                        <i class="fas fa-bookmark"></i>
+                        <div class="detail-text">
+                            <label>Purpose</label>
+                            <p>${escapeHtml(record.purpose)}</p>
+                        </div>
+                    </div>
+                    <div class="monitor-detail">
+                        <i class="far fa-clock"></i>
+                        <div class="detail-text">
+                            <label>Time Started</label>
+                            <p>${formatTime(record.time_in)}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="monitor-card-footer">
+                    <div class="session-stat">
+                        <i class="fas fa-hourglass-start"></i>
+                        <span>${record.remaining_sessions || 0} left</span>
+                    </div>
+                    <button class="btn-checkout" onclick="handleAdminCheckout(${record.id})">
+                        <i class="fas fa-sign-out-alt"></i> End Session
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 async function handleAdminCheckout(recordId) {
@@ -1569,53 +1746,9 @@ async function handleAdminCheckout(recordId) {
 }
 
 // =============================================
-// Feedbacks
+// Feedbacks Logic Redesigned
 // =============================================
-async function loadFeedbacks() {
-    try {
-        const response = await fetch('/api/admin/feedbacks');
-        if (response.ok) {
-            const feedbacks = await response.json();
-            displayFeedbacks(feedbacks);
-            const totalFeedbacksEl = document.getElementById('totalFeedbacks');
-            if (totalFeedbacksEl) totalFeedbacksEl.textContent = feedbacks.length || 0;
-        }
-    } catch (error) {
-        console.error('Error loading feedbacks:', error);
-    }
-}
-
-function displayFeedbacks(feedbacks) {
-    const tbody = document.getElementById('feedbacksTableBody');
-    if (!tbody) return;
-
-    if (!feedbacks || feedbacks.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5">No feedbacks found</td></tr>';
-        return;
-    }
-
-    tbody.innerHTML = feedbacks.map(feedback => `
-        <tr>
-            <td>${formatDate(feedback.created_at)}</td>
-            <td>${feedback.first_name} ${feedback.last_name} (${feedback.id_number})</td>
-            <td>${generateStarRating(feedback.rating)}</td>
-            <td>${escapeHtml(feedback.comment || 'No comment')}</td>
-            <td>
-                <button class="btn-icon">
-                    <i class="fas fa-reply"></i>
-                </button>
-            </td>
-        </tr>
-    `).join('');
-}
-
-function generateStarRating(rating) {
-    let stars = '';
-    for (let i = 1; i <= 5; i++) {
-        stars += `<i class="${i <= rating ? 'fas' : 'far'} fa-star" style="color: #ffc107;"></i>`;
-    }
-    return stars;
-}
+// Functions consolidated at the top (lines 301-336)
 
 // =============================================
 // Reservations
@@ -1651,8 +1784,20 @@ async function loadComputerStatus() {
     try {
         const response = await fetch('/api/admin/computer-status');
         if (response.ok) {
-            const status = await response.json();
-            displayComputerStatus(status);
+            const labs = await response.json();
+            displayComputerStatus(labs);
+            
+            // Calculate overall capacity
+            let totalAvailable = 0;
+            let totalCapacity = 0;
+            labs.forEach(lab => {
+                totalAvailable += lab.available_pcs;
+                totalCapacity += lab.total_pcs;
+            });
+            
+            const capacityPercent = totalCapacity > 0 ? Math.round(((totalCapacity - totalAvailable) / totalCapacity) * 100) : 0;
+            const capEl = document.getElementById('resOverallCapacity');
+            if (capEl) capEl.textContent = `${capacityPercent}%`;
         }
     } catch (error) {
         console.error('Error loading computer status:', error);
@@ -1663,24 +1808,57 @@ function displayComputerStatus(labs) {
     const grid = document.getElementById('labStatusGrid');
     if (!grid) return;
 
-    grid.innerHTML = labs.map(lab => `
-        <div class="lab-status-card animate__animated animate__fadeIn">
-            <div class="lab-info">
-                <h4>${lab.lab_name}</h4>
-                <div class="status-indicator ${lab.available_pcs > 0 ? 'available' : 'full'}"></div>
+    grid.innerHTML = labs.map((lab, index) => {
+        const delay = (index * 0.05).toFixed(2);
+        const percent = Math.round((lab.available_pcs / lab.total_pcs) * 100);
+        const statusClass = percent > 50 ? 'available' : (percent > 10 ? 'warning' : 'full');
+        
+        return `
+            <div class="lab-health-card animate__animated animate__fadeInUp" style="animation-delay: ${delay}s">
+                <div class="lab-card-header">
+                    <div class="lab-title">
+                        <h4>${escapeHtml(lab.lab_name)}</h4>
+                        <span class="room-tag">${lab.lab_name.includes('524') ? 'Rm 1' : 'Rm ' + (index + 1)}</span>
+                    </div>
+                    <div class="status-dot ${statusClass}"></div>
+                </div>
+                
+                <div class="lab-card-body">
+                    <div class="pc-visualization">
+                        <div class="pc-icon-grid">
+                            ${Array(12).fill(0).map((_, i) => `<i class="fas fa-desktop pc-dot ${i < (12 - Math.round((lab.available_pcs/lab.total_pcs)*12)) ? 'busy' : ''}"></i>`).join('')}
+                        </div>
+                        <div class="usage-stats">
+                            <span class="percent">${100 - percent}%</span>
+                            <p>Used</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stats-row">
+                        <div class="mini-stat">
+                            <label>Available</label>
+                            <span>${lab.available_pcs} PC</span>
+                        </div>
+                        <div class="mini-stat">
+                            <label>Active Sit-ins</label>
+                            <span>${lab.active_sitins}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="health-progress">
+                        <div class="progress-fill ${statusClass}" style="width: ${percent}%"></div>
+                    </div>
+                </div>
+                
+                <div class="lab-card-footer">
+                    <span>Capacity: ${lab.total_pcs} Seats</span>
+                    <button class="btn-view-lab" onclick="viewLabDetails('${lab.lab_name}')">
+                        <i class="fas fa-external-link-alt"></i>
+                    </button>
+                </div>
             </div>
-            <div class="pc-count">
-                <span class="available">${lab.available_pcs}</span>
-                <span class="total">/ ${lab.total_pcs} Available</span>
-            </div>
-            <div class="lab-stats">
-                <p>Active Sit-ins: <strong>${lab.active_sitins}</strong></p>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: ${(lab.available_pcs / lab.total_pcs) * 100}%"></div>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 async function loadUserReservations() {
@@ -1702,6 +1880,16 @@ async function loadAdminReservations(filterStatus = null) {
         if (response.ok) {
             let reservations = await response.json();
 
+            // Calculate overall reservations stats
+            const pendingCount = reservations.filter(r => r.status === 'pending').length;
+            const confirmedToday = reservations.filter(r => r.status === 'approved' && formatDate(r.date) === formatDate(new Date().toISOString())).length;
+            
+            const pendingEl = document.getElementById('resPendingCount');
+            if (pendingEl) pendingEl.textContent = pendingCount;
+            
+            const confirmedEl = document.getElementById('resConfirmedToday');
+            if (confirmedEl) confirmedEl.textContent = confirmedToday;
+
             if (filterStatus) {
                 reservations = reservations.filter(r => r.status === filterStatus);
                 displayReservationRequests(reservations);
@@ -1715,27 +1903,61 @@ async function loadAdminReservations(filterStatus = null) {
 }
 
 function displayReservationRequests(requests) {
-    const tbody = document.getElementById('reservationRequestsTableBody');
-    if (!tbody) return;
+    const grid = document.getElementById('reservationRequestsGrid');
+    if (!grid) return;
 
     if (!requests || requests.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6">No pending requests</td></tr>';
+        grid.innerHTML = `
+            <div class="empty-monitor">
+                <i class="fas fa-inbox"></i>
+                <p>All requests processed! Your inbox is clear.</p>
+            </div>
+        `;
         return;
     }
 
-    tbody.innerHTML = requests.map(r => `
-        <tr>
-            <td>${r.id_number}</td>
-            <td>${r.first_name} ${r.last_name}</td>
-            <td>${r.lab_room}</td>
-            <td>${formatDate(r.date)} ${formatTime(r.time)}</td>
-            <td>${escapeHtml(r.purpose)}</td>
-            <td>
-                <button class="btn-primary btn-small" onclick="updateReservationStatus(${r.id}, 'approved')">Approve</button>
-                <button class="btn-danger btn-small" onclick="updateReservationStatus(${r.id}, 'denied')">Deny</button>
-            </td>
-        </tr>
-    `).join('');
+    grid.innerHTML = requests.map((r, index) => {
+        const delay = (index * 0.05).toFixed(2);
+        const initial = r.first_name ? r.first_name.charAt(0).toUpperCase() : '?';
+        
+        return `
+            <div class="admin-res-card animate__animated animate__fadeInUp" style="animation-delay: ${delay}s">
+                <div class="res-card-header">
+                    <div class="student-brief">
+                        <div class="res-avatar">${initial}</div>
+                        <div class="res-user-info">
+                            <h4>${escapeHtml(r.first_name)} ${escapeHtml(r.last_name)}</h4>
+                            <span>ID: ${escapeHtml(r.id_number)}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="res-card-body">
+                    <div class="res-detail">
+                        <i class="fas fa-door-open"></i>
+                        <p><strong>${escapeHtml(r.lab_room)}</strong></p>
+                    </div>
+                    <div class="res-detail">
+                        <i class="far fa-calendar-alt"></i>
+                        <p>${formatDate(r.date)} at ${formatTime(r.time)}</p>
+                    </div>
+                    <div class="res-detail purpose">
+                        <i class="fas fa-quote-left"></i>
+                        <p>${escapeHtml(r.purpose)}</p>
+                    </div>
+                </div>
+                
+                <div class="res-card-footer">
+                    <button class="btn-res-deny" onclick="updateReservationStatus(${r.id}, 'denied')">
+                        <i class="fas fa-times"></i> Deny
+                    </button>
+                    <button class="btn-res-approve" onclick="updateReservationStatus(${r.id}, 'approved')">
+                        <i class="fas fa-check"></i> Approve
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 function displayReservationLogs(logs) {
@@ -1747,15 +1969,23 @@ function displayReservationLogs(logs) {
         return;
     }
 
-    tbody.innerHTML = logs.map(l => `
-        <tr>
-            <td>${formatDate(l.date)}</td>
-            <td>${formatTime(l.time)}</td>
-            <td>${l.first_name} ${l.last_name}</td>
-            <td>${l.lab_room}</td>
-            <td><span class="status-badge ${l.status}">${l.status}</span></td>
-        </tr>
-    `).join('');
+    tbody.innerHTML = logs.map((l, index) => {
+        const delay = (index * 0.02).toFixed(2);
+        return `
+            <tr class="animate__animated animate__fadeIn" style="animation-delay: ${delay}s">
+                <td><span class="date-chip">${formatDate(l.date)}</span></td>
+                <td><span class="time-text">${formatTime(l.time)}</span></td>
+                <td>
+                    <div class="user-info-cell">
+                        <div class="avatar-mini">${l.first_name.charAt(0)}</div>
+                        <span class="full-name">${l.first_name} ${l.last_name}</span>
+                    </div>
+                </td>
+                <td><span class="lab-badge">${l.lab_room}</span></td>
+                <td><span class="status-badge ${l.status}">${l.status}</span></td>
+            </tr>
+        `;
+    }).join('');
 }
 
 async function updateReservationStatus(id, status) {
@@ -2213,10 +2443,10 @@ function setupEventListeners() {
 
                     // Switch to Sit-in Management section to see the new record
                     showSection('sitIn');
-                    
+
                     // Refresh active sit-in records table
                     loadActiveSitins();
-                    
+
                     // Also refresh all records table if needed
                     loadAllRecords();
 
@@ -2282,28 +2512,78 @@ function setupEventListeners() {
     if (feedbackForm) {
         feedbackForm.addEventListener('submit', async function (e) {
             e.preventDefault();
-            const rating = document.querySelector('input[name="rating"]:checked')?.value;
-            const comment = document.getElementById('feedbackComment').value;
+            const comment = document.getElementById('feedbackComment').value.trim();
 
-            if (!rating) {
-                alert('Please select a rating');
+            if (!comment) {
+                showErrorModal('Empty Message', 'Please enter a message before submitting.');
                 return;
             }
 
+            showLoading(true);
             try {
                 const response = await fetch('/api/feedbacks', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: currentUser.id, rating, comment })
+                    body: JSON.stringify({ user_id: currentUser.id, comment })
                 });
+
                 if (response.ok) {
-                    showSuccessModal('Success', 'Thank you for your feedback!');
+                    showSuccessModal('Feedback Submitted', 'Thank you! Your feedback has been received and helps us improve our services.');
                     feedbackForm.reset();
+                    loadUserFeedbacks(); // Refresh the history list
+                } else {
+                    const error = await response.json();
+                    showErrorModal('Submission Failed', error.error || 'Failed to submit feedback');
                 }
             } catch (error) {
                 console.error('Error submitting feedback:', error);
+                showErrorModal('Error', 'An unexpected error occurred. Please try again.');
             }
+            showLoading(false);
         });
+    }
+
+    async function loadUserFeedbacks() {
+        const listElement = document.getElementById('userFeedbackList');
+        if (!listElement) return;
+
+        try {
+            const response = await fetch(`/api/feedbacks/user/${currentUser.id}`);
+            if (response.ok) {
+                const feedbacks = await response.json();
+                displayUserFeedbacks(feedbacks);
+            }
+        } catch (error) {
+            console.error('Error loading user feedbacks:', error);
+        }
+    }
+
+    function displayUserFeedbacks(feedbacks) {
+        const listElement = document.getElementById('userFeedbackList');
+        if (!listElement) return;
+
+        if (!feedbacks || feedbacks.length === 0) {
+            listElement.innerHTML = `
+            <div class="empty-feedbacks">
+                <i class="fas fa-comments"></i>
+                <p>No feedback submitted yet. Share your thoughts with us!</p>
+            </div>
+        `;
+            return;
+        }
+
+        listElement.innerHTML = feedbacks.map((f, index) => {
+            const delay = (index * 0.1).toFixed(1);
+            return `
+            <div class="feedback-item animate__animated animate__fadeInRight" style="animation-delay: ${delay}s">
+                <div class="feedback-item-header">
+                    <span class="date"><i class="far fa-calendar-alt"></i> ${formatDate(f.created_at)}</span>
+                    <span class="time"><i class="far fa-clock"></i> ${formatTime(f.created_at)}</span>
+                </div>
+                <div class="feedback-item-content">${escapeHtml(f.comment)}</div>
+            </div>
+        `;
+        }).join('');
     }
 
     // Close notification panel when clicking outside
@@ -2436,12 +2716,12 @@ function showSuccessModal(title, message) {
 function redirectToSitInFormFromModal(student) {
     const modal = document.getElementById('sitInModal');
     if (!modal) return;
-    
+
     // Populate form
     document.getElementById('studentIdNumber').value = student.id_number;
     document.getElementById('studentName').value = `${student.first_name} ${student.last_name}`;
     document.getElementById('studentSession').value = student.remaining_sessions || 30;
-    
+
     // Show modal
     modal.classList.remove('hidden');
 }

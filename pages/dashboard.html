@@ -28,6 +28,9 @@
       <a href="#" class="nav-link" onclick="showSection('reservation')">
         <i class="fas fa-calendar-alt"></i> Reservation
       </a>
+      <a href="#" class="nav-link" onclick="showSection('studentFeedback')">
+        <i class="fas fa-comment-dots"></i> Feedback
+      </a>
       <a href="#" class="nav-link" onclick="showSection('notifications')">
         <i class="fas fa-bell"></i> Notification
       </a>
@@ -518,54 +521,84 @@
 
         <!-- Admin Reservation View -->
         <div id="adminReservationView" style="display: none;" class="animate__animated animate__fadeInUp">
-          <div class="tab-container">
-            <div class="tabs">
-              <button class="tab-btn active" onclick="switchReservationTab('computerControl')">Computer Control</button>
-              <button class="tab-btn" onclick="switchReservationTab('requests')">Reservation Requests</button>
-              <button class="tab-btn" onclick="switchReservationTab('logs')">Reservation Logs</button>
+          <!-- Reservation Statistics -->
+          <div class="admin-stats-grid">
+            <div class="stat-card mini">
+              <div class="stat-icon orange"><i class="fas fa-clock"></i></div>
+              <div class="stat-details">
+                <h4 id="resPendingCount">0</h4>
+                <p>Pending Requests</p>
+              </div>
             </div>
+            <div class="stat-card mini">
+              <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+              <div class="stat-details">
+                <h4 id="resConfirmedToday">0</h4>
+                <p>Confirmed Today</p>
+              </div>
+            </div>
+            <div class="stat-card mini">
+              <div class="stat-icon blue"><i class="fas fa-desktop"></i></div>
+              <div class="stat-details">
+                <h4 id="resOverallCapacity">0%</h4>
+                <p>Overall Lab Usage</p>
+              </div>
+            </div>
+          </div>
 
+          <div class="tab-container premium">
+            <div class="tabs modern">
+              <button class="tab-btn active" onclick="switchReservationTab('computerControl')">
+                <i class="fas fa-microchip"></i> Lab Status
+              </button>
+              <button class="tab-btn" onclick="switchReservationTab('requests')">
+                <i class="fas fa-inbox"></i> Pending Approval
+              </button>
+              <button class="tab-btn" onclick="switchReservationTab('logs')">
+                <i class="fas fa-history"></i> Reservation logs
+              </button>
+            </div>
+ 
             <!-- Computer Control Tab -->
             <div id="computerControlTab" class="tab-content">
-              <h3><i class="fas fa-desktop"></i> Laboratory Computer Status</h3>
-              <div class="lab-status-grid" id="labStatusGrid">
-                <!-- Lab status cards will be loaded here -->
+              <div class="tab-header-flex">
+                <h3><i class="fas fa-desktop"></i> Laboratory Health Monitor</h3>
+                <div class="active-pulse-badge">
+                  <span class="pulse-dot"></span> Real-time Status
+                </div>
+              </div>
+              <div class="lab-status-grid premium" id="labStatusGrid">
+                <!-- Lab health cards will be loaded here -->
               </div>
             </div>
 
             <!-- Reservation Requests Tab -->
             <div id="requestsTab" class="tab-content hidden">
-              <h3><i class="fas fa-clock"></i> Pending Requests</h3>
-              <div class="table-container">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>ID Number</th>
-                      <th>Student</th>
-                      <th>Lab Room</th>
-                      <th>Date/Time</th>
-                      <th>Purpose</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="reservationRequestsTableBody">
-                    <!-- Requests will be loaded here -->
-                  </tbody>
-                </table>
+              <div class="tab-header-flex">
+                <h3><i class="fas fa-clock"></i> Pending Approvals</h3>
+              </div>
+              <div id="reservationRequestsGrid" class="active-monitor-grid">
+                <!-- Requests will be loaded here as cards -->
+                <div class="empty-monitor">
+                  <i class="fas fa-inbox"></i>
+                  <p>All requests processed! Your inbox is clear.</p>
+                </div>
               </div>
             </div>
 
             <!-- Reservation Logs Tab -->
             <div id="logsTab" class="tab-content hidden">
-              <h3><i class="fas fa-history"></i> Reservation History</h3>
-              <div class="table-container">
-                <table>
+              <div class="tab-header-flex">
+                <h3><i class="fas fa-history"></i> Global Reservation History</h3>
+              </div>
+              <div class="table-container premium">
+                <table id="reservationLogsTable">
                   <thead>
                     <tr>
                       <th>Date</th>
                       <th>Time</th>
                       <th>Student</th>
-                      <th>Lab</th>
+                      <th>Laboratory</th>
                       <th>Status</th>
                     </tr>
                   </thead>
@@ -642,28 +675,41 @@
       <!-- Feedback Section (New for Students) -->
       <section class="content-section hidden" id="studentFeedbackSection">
         <h2 class="section-title animate__animated animate__fadeInUp">
-          <i class="fas fa-comment-dots"></i> Feedback
+          <i class="fas fa-comment-dots"></i> Feedback & Suggestions
         </h2>
-        <div class="feedback-container animate__animated animate__fadeInUp">
-          <div class="feedback-card">
-            <h3>Share your experience</h3>
+
+        <div class="feedback-layout animate__animated animate__fadeInUp">
+          <!-- Submission Card -->
+          <div class="feedback-card submission-card">
+            <div class="card-hero">
+              <i class="fas fa-paper-plane"></i>
+              <h3>Share your experience</h3>
+            </div>
             <form id="studentFeedbackForm">
               <div class="form-group">
-                <label>Rating</label>
-                <div class="star-rating">
-                  <input type="radio" name="rating" value="5" id="5"><label for="5">☆</label>
-                  <input type="radio" name="rating" value="4" id="4"><label for="4">☆</label>
-                  <input type="radio" name="rating" value="3" id="3"><label for="3">☆</label>
-                  <input type="radio" name="rating" value="2" id="2"><label for="2">☆</label>
-                  <input type="radio" name="rating" value="1" id="1"><label for="1">☆</label>
-                </div>
+                <label for="feedbackComment"><i class="fas fa-pen"></i> Message</label>
+                <textarea id="feedbackComment" rows="6"
+                  placeholder="Tell us how we can improve. Your feedback helps us build a better environment for everyone."
+                  required></textarea>
               </div>
-              <div class="form-group">
-                <label for="feedbackComment">Comment</label>
-                <textarea id="feedbackComment" rows="4" placeholder="Tell us how we can improve..." required></textarea>
-              </div>
-              <button type="submit" class="btn-primary">Submit Feedback</button>
+              <button type="submit" class="btn-primary-gradient">
+                <span>Submit Feedback</span>
+                <i class="fas fa-chevron-right"></i>
+              </button>
             </form>
+          </div>
+
+          <!-- History Card -->
+          <div class="feedback-card history-card">
+            <div class="history-header">
+              <h3><i class="fas fa-history"></i> My Previous Feedback</h3>
+            </div>
+            <div id="userFeedbackList" class="feedback-list">
+              <div class="empty-feedbacks">
+                <i class="fas fa-comments"></i>
+                <p>No feedback submitted yet. Share your thoughts with us!</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -836,27 +882,60 @@
 
       <!-- Student Management Section -->
       <section class="content-section hidden" id="studentMgmtSection">
-        <h2 class="section-title animate__animated animate__fadeInUp">
-          <i class="fas fa-user-graduate"></i> Student Management
-        </h2>
-
-        <div class="student-mgmt-container animate__animated animate__fadeInUp">
-          <div class="student-mgmt-header">
-            <button class="btn-primary" onclick="showAddStudentForm()">
-              <i class="fas fa-plus"></i> Add Student
+        <div class="section-header-flex animate__animated animate__fadeInUp">
+          <h2 class="section-title">
+            <i class="fas fa-user-graduate"></i> Student Management
+          </h2>
+          <div class="header-actions">
+            <button class="btn-primary-gradient" onclick="showAddStudentForm()">
+              <i class="fas fa-plus"></i> Add New Student
             </button>
           </div>
+        </div>
 
-          <div class="table-container">
+        <!-- Student Statistics Cards -->
+        <div class="admin-stats-grid animate__animated animate__fadeInUp">
+          <div class="stat-card mini">
+            <div class="stat-icon blue"><i class="fas fa-users"></i></div>
+            <div class="stat-details">
+              <h4 id="mgmtTotalStudents">0</h4>
+              <p>Total Registered</p>
+            </div>
+          </div>
+          <div class="stat-card mini">
+            <div class="stat-icon green"><i class="fas fa-user-check"></i></div>
+            <div class="stat-details">
+              <h4 id="mgmtActiveStudents">0</h4>
+              <p>Active Now</p>
+            </div>
+          </div>
+          <div class="stat-card mini">
+            <div class="stat-icon purple"><i class="fas fa-graduation-cap"></i></div>
+            <div class="stat-details">
+              <h4 id="mgmtNewStudents">0</h4>
+              <p>New This Month</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="student-mgmt-container animate__animated animate__fadeInUp">
+          <div class="table-controls-bar">
+            <div class="search-box">
+              <i class="fas fa-search"></i>
+              <input type="text" id="studentMgmtSearch" placeholder="Search by ID, Name, or Course..." onkeyup="filterStudentTable()">
+            </div>
+          </div>
+
+          <div class="table-container premium">
             <table id="studentsTable">
               <thead>
                 <tr>
                   <th>ID Number</th>
-                  <th>Name</th>
-                  <th>Course</th>
-                  <th>Year</th>
-                  <th>Email</th>
+                  <th>Full Name</th>
+                  <th>Course & Level</th>
+                  <th>Email Address</th>
                   <th>Remaining Sessions</th>
+                  <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -921,51 +1000,77 @@
 
       <!-- Sit-in Management Section -->
       <section class="content-section hidden" id="sitInSection">
-        <h2 class="section-title animate__animated animate__fadeInUp">
-          <i class="fas fa-laptop"></i> Sit-in Management
-        </h2>
+        <div class="section-header-flex animate__animated animate__fadeInUp">
+          <h2 class="section-title">
+            <i class="fas fa-laptop"></i> Live Lab Monitor
+          </h2>
+          <div class="header-actions">
+            <div class="active-pulse-badge">
+              <span class="pulse-dot"></span>
+              <span id="activeSitinsCount">0</span> Registered Now
+            </div>
+          </div>
+        </div>
 
         <div class="sitIn-container animate__animated animate__fadeInUp">
-          <div class="table-container">
-            <h3>Current Sit-ins</h3>
-            <table id="activeSitinsTable">
-              <thead>
-                <tr>
-                  <th>ID Number</th>
-                  <th>Name</th>
-                  <th>Lab Room</th>
-                  <th>Purpose</th>
-                  <th>Time In</th>
-                  <th>Remaining Session</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="activeSitinsTableBody">
-                <!-- Active sit-ins data will be loaded here -->
-              </tbody>
-            </table>
-            <p id="noActiveSitinsMessage" class="no-data-message" style="display: none;">No students currently sitting
-              in.</p>
+          <div id="activeSitinsGrid" class="active-monitor-grid">
+            <!-- Active cards will be loaded here dynamically -->
+            <div class="empty-monitor">
+              <i class="fas fa-desktop"></i>
+              <p>No active sessions. All labs are currently available.</p>
+            </div>
           </div>
         </div>
       </section>
 
       <!-- View Sit-in Records Section -->
       <section class="content-section hidden" id="viewRecordsSection">
-        <h2 class="section-title animate__animated animate__fadeInUp">
-          <i class="fas fa-clipboard-list"></i> View Sit-in Records
-        </h2>
+        <div class="section-header-flex animate__animated animate__fadeInUp">
+          <h2 class="section-title">
+            <i class="fas fa-clipboard-list"></i> Sit-in Records Archive
+          </h2>
+          <div class="header-actions">
+            <button class="btn-secondary" onclick="exportToCSV()">
+              <i class="fas fa-file-export"></i> Export CSV
+            </button>
+          </div>
+        </div>
+
+        <!-- Records Archive Stats -->
+        <div class="admin-stats-grid animate__animated animate__fadeInUp">
+          <div class="stat-card mini">
+            <div class="stat-icon orange"><i class="fas fa-history"></i></div>
+            <div class="stat-details">
+              <h4 id="totalLabHours">0</h4>
+              <p>Total Lab Hours</p>
+            </div>
+          </div>
+          <div class="stat-card mini">
+            <div class="stat-icon blue"><i class="fas fa-microchip"></i></div>
+            <div class="stat-details">
+              <h4 id="mostActiveLab">N/A</h4>
+              <p>Most Popular Lab</p>
+            </div>
+          </div>
+          <div class="stat-card mini">
+            <div class="stat-icon green"><i class="fas fa-calendar-alt"></i></div>
+            <div class="stat-details">
+              <h4 id="archiveTotalRecords">0</h4>
+              <p>Total Records</p>
+            </div>
+          </div>
+        </div>
 
         <div class="records-container animate__animated animate__fadeInUp">
-          <div class="records-filters">
+          <div class="records-filters-bar">
             <div class="filter-group">
-              <label for="filterDate">Date:</label>
+              <label><i class="fas fa-calendar-day"></i> Filter Date</label>
               <input type="date" id="filterDate" onchange="filterRecords()" />
             </div>
             <div class="filter-group">
-              <label for="filterLabRoom">Lab Room:</label>
+              <label><i class="fas fa-door-open"></i> Lab Room</label>
               <select id="filterLabRoom" onchange="filterRecords()">
-                <option value="">All Labs</option>
+                <option value="">All Laboratories</option>
                 <option value="Lab 1">Lab 524</option>
                 <option value="Lab 2">Lab 526</option>
                 <option value="Lab 3">Lab 528</option>
@@ -974,24 +1079,23 @@
                 <option value="Lab 6">Lab 544</option>
               </select>
             </div>
-            <button class="btn-secondary" onclick="clearRecordFilters()">
-              <i class="fas fa-times"></i> Clear
+            <button class="btn-clear" onclick="clearRecordFilters()">
+              <i class="fas fa-undo"></i> Reset Filters
             </button>
           </div>
 
-          <div class="table-container">
+          <div class="table-container premium">
             <table id="recordsTable">
               <thead>
                 <tr>
                   <th>Date</th>
-                  <th>Student ID</th>
-                  <th>Name</th>
+                  <th>Student</th>
+                  <th>ID Number</th>
                   <th>Lab Room</th>
-                  <th>Purpose</th>
-                  <th>Time In</th>
-                  <th>Time Out</th>
-                  <th>Remaining Session</th>
+                  <th>Time Details</th>
                   <th>Duration</th>
+                  <th>Remaining</th>
+                  <th>Purpose</th>
                 </tr>
               </thead>
               <tbody id="recordsTableBody">
@@ -1004,26 +1108,25 @@
 
       <!-- Feedbacks Reports Section -->
       <section class="content-section hidden" id="feedbacksSection">
-        <h2 class="section-title animate__animated animate__fadeInUp">
-          <i class="fas fa-comments"></i> Feedbacks Reports
-        </h2>
+        <div class="section-header-flex animate__animated animate__fadeInUp">
+          <h2 class="section-title">
+            <i class="fas fa-comments"></i> Student Feedback Reports
+          </h2>
+          <div class="header-actions">
+            <div class="active-pulse-badge purple">
+              <i class="fas fa-comment-alt"></i>
+              <span id="totalFeedbacksCount">0</span> Reports Total
+            </div>
+          </div>
+        </div>
 
         <div class="feedbacks-container animate__animated animate__fadeInUp">
-          <div class="table-container">
-            <table id="feedbacksTable">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Student</th>
-                  <th>Rating</th>
-                  <th>Comment</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="feedbacksTableBody">
-                <!-- Feedbacks will be loaded here -->
-              </tbody>
-            </table>
+          <div id="adminFeedbackGrid" class="admin-feedback-grid">
+            <!-- Feedback cards will be loaded here dynamically -->
+            <div class="empty-monitor">
+              <i class="fas fa-comment-slash"></i>
+              <p>No student feedback reports currently available.</p>
+            </div>
           </div>
         </div>
       </section>

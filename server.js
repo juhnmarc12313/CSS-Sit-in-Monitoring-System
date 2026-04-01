@@ -577,16 +577,37 @@ app.get('/api/sitin/records/user/:user_id', (req, res) => {
 app.post('/api/feedbacks', (req, res) => {
     const { user_id, rating, comment } = req.body;
     
-    if (!user_id || !rating) {
-        return res.status(400).json({ error: 'User ID and rating are required' });
+    if (!user_id || !comment) {
+        return res.status(400).json({ error: 'User ID and comment are required' });
     }
 
+    // Default rating to 5 since we removed it from the UI
+    const defaultRating = rating || 5;
+
     const query = `INSERT INTO feedbacks (user_id, rating, comment) VALUES (?, ?, ?)`;
-    db.run(query, [user_id, rating, comment], function(err) {
+    db.run(query, [user_id, defaultRating, comment], function(err) {
         if (err) {
             return res.status(500).json({ error: 'Failed to submit feedback: ' + err.message });
         }
         res.status(201).json({ message: 'Feedback submitted successfully', id: this.lastID });
+    });
+});
+
+// Get user's own feedbacks
+app.get('/api/feedbacks/user/:user_id', (req, res) => {
+    const { user_id } = req.params;
+    
+    const query = `
+        SELECT * FROM feedbacks 
+        WHERE user_id = ? 
+        ORDER BY created_at DESC
+    `;
+
+    db.all(query, [user_id], (err, feedbacks) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to fetch user feedbacks: ' + err.message });
+        }
+        res.json(feedbacks);
     });
 });
 
