@@ -130,7 +130,7 @@ function displayStudents(students) {
         const delay = (index * 0.03).toFixed(2);
         const statusClass = student.is_active ? 'status-active' : 'status-inactive';
         const statusText = student.is_active ? 'Active' : 'Inactive';
-        
+
         return `
             <tr class="animate__animated animate__fadeInUp" style="animation-delay: ${delay}s">
                 <td><span class="id-badge">${student.id_number}</span></td>
@@ -205,11 +205,11 @@ function displayRecords(records) {
     // Update Statistics
     if (records) {
         document.getElementById('archiveTotalRecords').textContent = records.length;
-        
+
         // Calculate total hours
         let totalMinutes = 0;
         const labCounts = {};
-        
+
         records.forEach(r => {
             if (r.time_out) {
                 const [inH, inM] = r.time_in.split(':').map(Number);
@@ -218,10 +218,10 @@ function displayRecords(records) {
             }
             labCounts[r.lab_room] = (labCounts[r.lab_room] || 0) + 1;
         });
-        
+
         const hours = Math.floor(totalMinutes / 60);
         document.getElementById('totalLabHours').textContent = `${hours}h`;
-        
+
         // Find most active lab
         let bestLab = 'N/A';
         let max = 0;
@@ -242,7 +242,7 @@ function displayRecords(records) {
     tbody.innerHTML = records.map((record, index) => {
         const delay = (index * 0.02).toFixed(2);
         const duration = record.time_out ? calculateDuration(record.time_in, record.time_out) : '<span class="live-tag">Live</span>';
-        
+
         return `
             <tr class="animate__animated animate__fadeIn" style="animation-delay: ${delay}s">
                 <td><span class="date-chip">${record.date}</span></td>
@@ -272,13 +272,13 @@ function exportToCSV() {
     const table = document.getElementById('recordsTable');
     let csv = [];
     const rows = table.querySelectorAll('tr');
-    
+
     for (const row of rows) {
         const cols = row.querySelectorAll('td, th');
         const rowData = Array.from(cols).map(col => `"${col.innerText.replace(/"/g, '""')}"`);
         csv.push(rowData.join(','));
     }
-    
+
     const csvContent = 'data:text/csv;charset=utf-8,' + csv.join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
@@ -306,7 +306,7 @@ async function loadFeedbacks() {
             displayFeedbacks(feedbacks);
             const totalCountEl = document.getElementById('totalFeedbacksCount');
             if (totalCountEl) totalCountEl.textContent = feedbacks.length || 0;
-            
+
             // Legacy counter for main dashboard
             const legacyCountEl = document.getElementById('totalFeedbacks');
             if (legacyCountEl) legacyCountEl.textContent = feedbacks.length || 0;
@@ -333,7 +333,7 @@ function displayFeedbacks(feedbacks) {
     grid.innerHTML = feedbacks.map((feedback, index) => {
         const delay = (index * 0.05).toFixed(2);
         const initial = feedback.first_name ? feedback.first_name.charAt(0).toUpperCase() : '?';
-        
+
         return `
             <div class="admin-feedback-card animate__animated animate__fadeInUp" style="animation-delay: ${delay}s">
                 <div class="feedback-card-header">
@@ -1639,10 +1639,10 @@ async function loadActiveSitins() {
         if (response.ok) {
             const records = await response.json();
             displayActiveSitins(records);
-            
+
             const countBadge = document.getElementById('activeSitinsCount');
             if (countBadge) countBadge.textContent = records.length || 0;
-            
+
             const dashboardActiveDisp = document.getElementById('activeSitins');
             if (dashboardActiveDisp) dashboardActiveDisp.textContent = records.length || 0;
         }
@@ -1668,7 +1668,7 @@ function displayActiveSitins(records) {
     grid.innerHTML = records.map((record, index) => {
         const delay = (index * 0.05).toFixed(2);
         const initial = record.first_name ? record.first_name.charAt(0).toUpperCase() : '?';
-        
+
         return `
             <div class="active-monitor-card animate__animated animate__fadeInUp" style="animation-delay: ${delay}s">
                 <div class="monitor-card-header">
@@ -1786,7 +1786,7 @@ async function loadComputerStatus() {
         if (response.ok) {
             const labs = await response.json();
             displayComputerStatus(labs);
-            
+
             // Calculate overall capacity
             let totalAvailable = 0;
             let totalCapacity = 0;
@@ -1794,7 +1794,7 @@ async function loadComputerStatus() {
                 totalAvailable += lab.available_pcs;
                 totalCapacity += lab.total_pcs;
             });
-            
+
             const capacityPercent = totalCapacity > 0 ? Math.round(((totalCapacity - totalAvailable) / totalCapacity) * 100) : 0;
             const capEl = document.getElementById('resOverallCapacity');
             if (capEl) capEl.textContent = `${capacityPercent}%`;
@@ -1812,7 +1812,7 @@ function displayComputerStatus(labs) {
         const delay = (index * 0.05).toFixed(2);
         const percent = Math.round((lab.available_pcs / lab.total_pcs) * 100);
         const statusClass = percent > 50 ? 'available' : (percent > 10 ? 'warning' : 'full');
-        
+
         return `
             <div class="lab-health-card animate__animated animate__fadeInUp" style="animation-delay: ${delay}s">
                 <div class="lab-card-header">
@@ -1826,7 +1826,7 @@ function displayComputerStatus(labs) {
                 <div class="lab-card-body">
                     <div class="pc-visualization">
                         <div class="pc-icon-grid">
-                            ${Array(12).fill(0).map((_, i) => `<i class="fas fa-desktop pc-dot ${i < (12 - Math.round((lab.available_pcs/lab.total_pcs)*12)) ? 'busy' : ''}"></i>`).join('')}
+                            ${Array(12).fill(0).map((_, i) => `<i class="fas fa-desktop pc-dot ${i < (12 - Math.round((lab.available_pcs / lab.total_pcs) * 12)) ? 'busy' : ''}"></i>`).join('')}
                         </div>
                         <div class="usage-stats">
                             <span class="percent">${100 - percent}%</span>
@@ -1883,10 +1883,10 @@ async function loadAdminReservations(filterStatus = null) {
             // Calculate overall reservations stats
             const pendingCount = reservations.filter(r => r.status === 'pending').length;
             const confirmedToday = reservations.filter(r => r.status === 'approved' && formatDate(r.date) === formatDate(new Date().toISOString())).length;
-            
+
             const pendingEl = document.getElementById('resPendingCount');
             if (pendingEl) pendingEl.textContent = pendingCount;
-            
+
             const confirmedEl = document.getElementById('resConfirmedToday');
             if (confirmedEl) confirmedEl.textContent = confirmedToday;
 
@@ -1919,7 +1919,7 @@ function displayReservationRequests(requests) {
     grid.innerHTML = requests.map((r, index) => {
         const delay = (index * 0.05).toFixed(2);
         const initial = r.first_name ? r.first_name.charAt(0).toUpperCase() : '?';
-        
+
         return `
             <div class="admin-res-card animate__animated animate__fadeInUp" style="animation-delay: ${delay}s">
                 <div class="res-card-header">
