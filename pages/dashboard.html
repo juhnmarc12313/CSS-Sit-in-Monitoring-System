@@ -85,6 +85,9 @@
       <a href="#" class="nav-link" onclick="showSection('feedbacks')">
         <i class="fas fa-comments"></i> Feedbacks Reports
       </a>
+      <a href="#" class="nav-link" onclick="showSection('sitinReports')">
+        <i class="fas fa-chart-line"></i> Sit-in Reports
+      </a>
       <a href="#" class="nav-link" onclick="showSection('reservation')">
         <i class="fas fa-calendar-alt"></i> Reservation
       </a>
@@ -1129,6 +1132,158 @@
               <p>No student feedback reports currently available.</p>
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- Sit-in Reports Section -->
+      <section class="content-section hidden" id="sitinReportsSection">
+        <div class="section-header-flex animate__animated animate__fadeInUp">
+          <h2 class="section-title">
+            <i class="fas fa-chart-line"></i> Sit-in Reports & Analytics
+          </h2>
+          <div class="header-actions">
+            <button class="btn-secondary" onclick="exportSitInReportCSV()">
+              <i class="fas fa-file-csv"></i> Export CSV
+            </button>
+          </div>
+        </div>
+
+        <!-- Report Filters -->
+        <div class="report-filters-card animate__animated animate__fadeInUp">
+          <div class="filter-row">
+            <div class="filter-group">
+              <label><i class="fas fa-calendar-alt"></i> Date From</label>
+              <input type="date" id="reportDateFrom" onchange="loadSitInReports()" />
+            </div>
+            <div class="filter-group">
+              <label><i class="fas fa-calendar-alt"></i> Date To</label>
+              <input type="date" id="reportDateTo" onchange="loadSitInReports()" />
+            </div>
+            <div class="filter-group">
+              <label><i class="fas fa-door-open"></i> Lab Room</label>
+              <select id="reportLabRoom" onchange="loadSitInReports()">
+                <option value="">All Laboratories</option>
+                <option value="Lab 1">Lab 524</option>
+                <option value="Lab 2">Lab 526</option>
+                <option value="Lab 3">Lab 528</option>
+                <option value="Lab 4">Lab 530</option>
+                <option value="Lab 5">Lab 542</option>
+                <option value="Lab 6">Lab 544</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label><i class="fas fa-graduation-cap"></i> Course</label>
+              <select id="reportCourse" onchange="loadSitInReports()">
+                <option value="">All Courses</option>
+                <option value="BSCS">BSCS</option>
+                <option value="BSIT">BSIT</option>
+                <option value="BSIS">BSIS</option>
+                <option value="ACT">ACT</option>
+              </select>
+            </div>
+            <div class="filter-group filter-actions">
+              <button class="btn-clear" onclick="clearReportFilters()">
+                <i class="fas fa-undo"></i> Reset
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary Statistics -->
+        <div class="admin-stats-grid animate__animated animate__fadeInUp">
+          <div class="stat-card mini">
+            <div class="stat-icon blue"><i class="fas fa-users"></i></div>
+            <div class="stat-details">
+              <h4 id="reportTotalSitins">0</h4>
+              <p>Total Sit-ins</p>
+            </div>
+          </div>
+          <div class="stat-card mini">
+            <div class="stat-icon green"><i class="fas fa-clock"></i></div>
+            <div class="stat-details">
+              <h4 id="reportAvgDuration">0h 0m</h4>
+              <p>Avg Duration</p>
+            </div>
+          </div>
+          <div class="stat-card mini">
+            <div class="stat-icon purple"><i class="fas fa-hourglass-half"></i></div>
+            <div class="stat-details">
+              <h4 id="reportTotalHours">0h 0m</h4>
+              <p>Total Hours</p>
+            </div>
+          </div>
+          <div class="stat-card mini">
+            <div class="stat-icon orange"><i class="fas fa-trophy"></i></div>
+            <div class="stat-details">
+              <h4 id="reportTopLab">N/A</h4>
+              <p>Most Used Lab</p>
+            </div>
+          </div>
+          <div class="stat-card mini">
+            <div class="stat-icon red"><i class="fas fa-user-check"></i></div>
+            <div class="stat-details">
+              <h4 id="reportUniqueStudents">0</h4>
+              <p>Unique Students</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Area -->
+        <div class="reports-charts-grid animate__animated animate__fadeInUp">
+          <div class="chart-card">
+            <h3><i class="fas fa-chart-bar"></i> Sit-ins by Lab Room</h3>
+            <div id="labUsageChart" class="chart-container">
+              <div class="empty-chart">
+                <i class="fas fa-chart-bar"></i>
+                <p>Apply filters to view data</p>
+              </div>
+            </div>
+          </div>
+          <div class="chart-card">
+            <h3><i class="fas fa-chart-pie"></i> Purpose Distribution</h3>
+            <div id="purposeChart" class="chart-container">
+              <div class="empty-chart">
+                <i class="fas fa-chart-pie"></i>
+                <p>Apply filters to view data</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Daily Sit-in Trends -->
+        <div class="chart-card animate__animated animate__fadeInUp">
+          <h3><i class="fas fa-chart-line"></i> Daily Sit-in Trends</h3>
+          <div id="dailyTrendsChart" class="chart-container">
+            <div class="empty-chart">
+              <i class="fas fa-chart-line"></i>
+              <p>Apply filters to view data</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top Students Table -->
+        <div class="table-container premium animate__animated animate__fadeInUp">
+          <div class="table-header-flex">
+            <h3><i class="fas fa-medal"></i> Top Active Students</h3>
+            <span class="table-count" id="topStudentsCount">Showing top 10</span>
+          </div>
+          <table id="topStudentsTable">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Student</th>
+                <th>Course</th>
+                <th>Total Sessions</th>
+                <th>Total Hours</th>
+                <th>Avg Duration</th>
+              </tr>
+            </thead>
+            <tbody id="topStudentsTableBody">
+              <tr>
+                <td colspan="6" class="no-data">No data available</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
     </main>

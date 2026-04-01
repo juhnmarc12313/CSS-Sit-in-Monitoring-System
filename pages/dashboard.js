@@ -1285,6 +1285,13 @@ function showSection(sectionName) {
                 loadFeedbacks(); // Load feedbacks when section is shown
             }
             break;
+        case 'sitinReports':
+            if (userRole === 'admin') {
+                document.getElementById('sitinReportsSection').classList.remove('hidden');
+                activateAdminNavLink(6);
+                loadSitInReports(); // Load sit-in reports when section is shown
+            }
+            break;
         case 'reservation':
             const reservationSection = document.getElementById('reservationSection');
             reservationSection.classList.remove('hidden');
@@ -1292,7 +1299,7 @@ function showSection(sectionName) {
             if (userRole === 'admin') {
                 document.getElementById('adminReservationView').style.display = 'block';
                 document.getElementById('studentReservationView').style.display = 'none';
-                activateAdminNavLink(6);
+                activateAdminNavLink(7);
                 switchReservationTab('computerControl'); // Default admin tab
             } else {
                 document.getElementById('adminReservationView').style.display = 'none';
@@ -2595,6 +2602,334 @@ function setupEventListeners() {
             panel.classList.remove('show');
         }
     });
+}
+
+// =============================================
+// Sit-in Reports Functions
+// =============================================
+async function loadSitInReports() {
+    const dateFrom = document.getElementById('reportDateFrom').value;
+    const dateTo = document.getElementById('reportDateTo').value;
+    const labRoom = document.getElementById('reportLabRoom').value;
+    const course = document.getElementById('reportCourse').value;
+
+    const params = new URLSearchParams();
+    if (dateFrom) params.append('dateFrom', dateFrom);
+    if (dateTo) params.append('dateTo', dateTo);
+    if (labRoom) params.append('labRoom', labRoom);
+    if (course) params.append('course', course);
+
+    try {
+        const response = await fetch(`/api/admin/sitin-reports?${params}`);
+        if (response.ok) {
+            const records = await response.json();
+            displaySitInReports(records);
+        }
+    } catch (error) {
+        console.error('Error loading sit-in reports:', error);
+    }
+}
+
+function displaySitInReports(records) {
+    if (!records || records.length === 0) {
+        // Reset all stats
+        document.getElementById('reportTotalSitins').textContent = '0';
+        document.getElementById('reportAvgDuration').textContent = '0h 0m';
+        document.getElementById('reportTotalHours').textContent = '0h 0m';
+        document.getElementById('reportTopLab').textContent = 'N/A';
+        document.getElementById('reportUniqueStudents').textContent = '0';
+        
+        // Show empty states
+        document.getElementById('labUsageChart').innerHTML = `
+            <div class="empty-chart">
+                <i class="fas fa-chart-bar"></i>
+                <p>No data available for selected filters</p>
+            </div>
+        `;
+        document.getElementById('purposeChart').innerHTML = `
+            <div class="empty-chart">
+                <i class="fas fa-chart-pie"></i>
+                <p>No data available for selected filters</p>
+            </div>
+        `;
+        document.getElementById('dailyTrendsChart').innerHTML = `
+            <div class="empty-chart">
+                <i class="fas fa-chart-line"></i>
+                <p>No data available for selected filters</p>
+            </div>
+        `;
+        document.getElementById('topStudentsTableBody').innerHTML = `
+            <tr><td colspan="6" class="no-data">No data available</td></tr>
+        `;
+        return;
+    }
+
+    // Calculate statistics
+    let totalMinutes = 0;
+    let completedRecords = 0;
+    const labCounts = {};
+    const purposeCounts = {};
+    const studentStats = {};
+    const dailyCounts = {};
+    const uniqueStudents = new Set();
+
+    records.forEach(r => {
+        uniqueStudents.add(r.id_number);
+        
+        if (r.time_out) {
+            const [inH, inM] = r.time_in.split(':').map(Number);
+            const [outH, outM] = r.time_out.split(':').map(Number);
+            const diff = (outH * 60 + outM) - (inH * 60 + inM);
+            if (diff > 0) {
+                totalMinutes += diff;
+                completedRecords++;
+            }
+        }
+        
+        labCounts[r.lab_room] = (labCounts[r.lab_room] || 0) + 1;
+        purposeCounts[r.purpose || 'Other'] = (purposeCounts[r.purpose || 'Other'] || 0) + 1;
+        
+        // Daily counts
+        if (r.date) {
+            dailyCounts[r.date] = (dailyCounts[r.date] || 0) + 1;
+        }
+        
+        // Student stats
+        const studentKey = r.id_number;
+        if (!studentStats[studentKey]) {
+            studentStats[studentKey] = {
+                name: `${r.first_name} ${r.last_name}`,
+                course: r.course,
+                sessions: 0,
+                minutes: 0
+            };
+        }
+        studentStats[studentKey].sessions++;
+        if (r.time_out) {
+            const [inH, inM] = r.time_in.split(':').map(Number);
+            const [outH, outM] = r.time_out.split(':').map(Number);
+            const diff = (outH * 60 + outM) - (inH * 60 + inM);
+            if (diff > 0) {
+                studentStats[studentKey].minutes += diff;
+            }
+        }
+    });
+
+    // Update summary stats
+    document.getElementById('reportTotalSitins').textContent = records.length;
+    
+    const avgMinutes = completedRecords > 0 ? Math.round(totalMinutes / completedRecords) : 0;
+    const totalHours = Math.floor(totalMinutes / 60);
+    const totalMins = totalMinutes % 60;
+    const avgHrs = Math.floor(avgMinutes / 60);
+    const avgMins = avgMinutes % 60;
+    
+    document.getElementById('reportAvgDuration').textContent = `${avgHrs}h ${avgMins}m`;
+    document.getElementById('reportTotalHours').textContent = `${totalHours}h ${totalMins}m`;
+    document.getElementById('reportUniqueStudents').textContent = uniqueStudents.size;
+
+    // Find top lab
+    let topLab = 'N/A';
+    let maxCount = 0;
+    for (const lab in labCounts) {
+        if (labCounts[lab] > maxCount) {
+            maxCount = labCounts[lab];
+            topLab = lab;
+        }
+    }
+    document.getElementById('reportTopLab').textContent = topLab;
+
+    // Render charts
+    renderLabUsageChart(labCounts);
+    renderPurposeChart(purposeCounts);
+    renderDailyTrendsChart(dailyCounts);
+    renderTopStudentsTable(studentStats);
+}
+
+function renderLabUsageChart(labCounts) {
+    const container = document.getElementById('labUsageChart');
+    const entries = Object.entries(labCounts).sort((a, b) => b[1] - a[1]);
+    
+    if (entries.length === 0) {
+        container.innerHTML = `
+            <div class="empty-chart">
+                <i class="fas fa-chart-bar"></i>
+                <p>No lab data available</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const maxCount = Math.max(...entries.map(e => e[1]), 1);
+    
+    const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4'];
+    
+    container.innerHTML = `
+        <div class="bar-chart-container">
+            ${entries.map(([lab, count], index) => `
+                <div class="bar-chart-item">
+                    <span class="bar-label">${lab}</span>
+                    <div class="bar-wrapper">
+                        <div class="bar-fill" style="width: ${(count/maxCount)*100}%; background: ${colors[index % colors.length]}">
+                            <span class="bar-value">${count}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function renderPurposeChart(purposeCounts) {
+    const container = document.getElementById('purposeChart');
+    const entries = Object.entries(purposeCounts).sort((a, b) => b[1] - a[1]);
+    
+    if (entries.length === 0) {
+        container.innerHTML = `
+            <div class="empty-chart">
+                <i class="fas fa-chart-pie"></i>
+                <p>No purpose data available</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const total = entries.reduce((sum, [, count]) => sum + count, 0);
+    const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4'];
+    
+    container.innerHTML = `
+        <div class="purpose-chart-container">
+            ${entries.map(([purpose, count], index) => `
+                <div class="purpose-item">
+                    <div class="purpose-color" style="background: ${colors[index % colors.length]}"></div>
+                    <span class="purpose-label">${purpose}</span>
+                    <span class="purpose-count">${count}</span>
+                    <span class="purpose-percent">${Math.round(count/total*100)}%</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function renderDailyTrendsChart(dailyCounts) {
+    const container = document.getElementById('dailyTrendsChart');
+    const entries = Object.entries(dailyCounts).sort((a, b) => a[0].localeCompare(b[0]));
+    
+    if (entries.length === 0) {
+        container.innerHTML = `
+            <div class="empty-chart">
+                <i class="fas fa-chart-line"></i>
+                <p>No daily data available</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const maxCount = Math.max(...entries.map(e => e[1]), 1);
+    
+    container.innerHTML = `
+        <div class="daily-trends-container">
+            ${entries.map(([date, count]) => {
+                const d = new Date(date);
+                const formatted = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                return `
+                    <div class="daily-bar-item">
+                        <span class="daily-bar-value">${count}</span>
+                        <div class="daily-bar-wrapper">
+                            <div class="daily-bar-fill" style="height: ${(count/maxCount)*100}%"></div>
+                        </div>
+                        <span class="daily-bar-label">${formatted}</span>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+function renderTopStudentsTable(studentStats) {
+    const tbody = document.getElementById('topStudentsTableBody');
+    const sorted = Object.entries(studentStats)
+        .sort((a, b) => b[1].sessions - a[1].sessions)
+        .slice(0, 10);
+    
+    if (sorted.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="no-data">No data available</td></tr>';
+        document.getElementById('topStudentsCount').textContent = 'No students';
+        return;
+    }
+    
+    document.getElementById('topStudentsCount').textContent = `Showing top ${sorted.length}`;
+    
+    const rankBadges = ['🥇', '🥈', '🥉'];
+    
+    tbody.innerHTML = sorted.map(([id, stats], index) => {
+        const hours = Math.floor(stats.minutes / 60);
+        const mins = stats.minutes % 60;
+        const avgMins = stats.sessions > 0 ? Math.round(stats.minutes / stats.sessions) : 0;
+        const avgHrs = Math.floor(avgMins / 60);
+        const avgRem = avgMins % 60;
+        
+        return `
+            <tr>
+                <td><span class="rank-badge ${index < 3 ? 'top' : ''}">${index < 3 ? rankBadges[index] : index + 1}</span></td>
+                <td class="student-name">${stats.name}</td>
+                <td><span class="course-badge">${stats.course}</span></td>
+                <td>${stats.sessions}</td>
+                <td>${hours}h ${mins}m</td>
+                <td>${avgHrs}h ${avgRem}m</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function clearReportFilters() {
+    document.getElementById('reportDateFrom').value = '';
+    document.getElementById('reportDateTo').value = '';
+    document.getElementById('reportLabRoom').value = '';
+    document.getElementById('reportCourse').value = '';
+    loadSitInReports();
+}
+
+function exportSitInReportCSV() {
+    const dateFrom = document.getElementById('reportDateFrom').value;
+    const dateTo = document.getElementById('reportDateTo').value;
+    const labRoom = document.getElementById('reportLabRoom').value;
+    const course = document.getElementById('reportCourse').value;
+
+    const params = new URLSearchParams();
+    if (dateFrom) params.append('dateFrom', dateFrom);
+    if (dateTo) params.append('dateTo', dateTo);
+    if (labRoom) params.append('labRoom', labRoom);
+    if (course) params.append('course', course);
+
+    fetch(`/api/admin/sitin-reports?${params}`)
+        .then(response => response.json())
+        .then(records => {
+            if (!records || records.length === 0) {
+                alert('No data to export');
+                return;
+            }
+
+            let csv = 'Date,Student ID,Student Name,Course,Lab Room,Purpose,Time In,Time Out,Duration\n';
+            records.forEach(r => {
+                const duration = r.time_out ? calculateDuration(r.time_in, r.time_out) : 'In Progress';
+                csv += `${r.date},"${r.id_number}","${r.first_name} ${r.last_name}","${r.course}","${r.lab_room}","${r.purpose}",${r.time_in},${r.time_out},"${duration}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `sitin_report_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        })
+        .catch(error => {
+            console.error('Error exporting report:', error);
+            alert('Failed to export report');
+        });
 }
 
 // =============================================

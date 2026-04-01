@@ -55,7 +55,7 @@ body {
   text-decoration: none;
   padding: 10px 20px;
   border-radius: 25px;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
   transition: all 0.3s ease;
   display: flex;
@@ -3308,4 +3308,418 @@ body {
   font-weight: 700;
   color: #5e3b71;
   font-family: 'JetBrains Mono', monospace;
+}
+
+/* =============================================
+   Sit-in Reports Styles
+   ============================================= */
+
+/* Report Filters Card */
+.report-filters-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  margin-bottom: 20px;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: flex-end;
+}
+
+.filter-row .filter-group {
+  flex: 1;
+  min-width: 150px;
+}
+
+.filter-row .filter-group label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filter-row .filter-group label i {
+  margin-right: 5px;
+  color: #5e3b71;
+}
+
+.filter-row .filter-group input,
+.filter-row .filter-group select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #f8fafc;
+  transition: all 0.2s;
+}
+
+.filter-row .filter-group input:focus,
+.filter-row .filter-group select:focus {
+  outline: none;
+  border-color: #5e3b71;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(94, 59, 113, 0.1);
+}
+
+.filter-group.filter-actions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+
+.filter-group.filter-actions .btn-clear {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  white-space: nowrap;
+}
+
+/* Reports Charts Grid */
+.reports-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.chart-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.chart-card h3 {
+  color: #5e3b71;
+  font-size: 1rem;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chart-card h3 i {
+  color: #8b5cf6;
+}
+
+.chart-container {
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-chart {
+  text-align: center;
+  color: #94a3b8;
+  padding: 40px 20px;
+}
+
+.empty-chart i {
+  font-size: 3rem;
+  margin-bottom: 10px;
+  opacity: 0.5;
+}
+
+.empty-chart p {
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Bar Chart Styles */
+.bar-chart-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.bar-chart-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bar-label {
+  min-width: 80px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  text-align: right;
+}
+
+.bar-wrapper {
+  flex: 1;
+  height: 28px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.bar-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #5e3b71 0%, #8b5cf6 100%);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 10px;
+  transition: width 0.5s ease;
+  min-width: 40px;
+}
+
+.bar-value {
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Purpose Chart Styles */
+.purpose-chart-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.purpose-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.purpose-item:hover {
+  background: #f1f5f9;
+}
+
+.purpose-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.purpose-label {
+  flex: 1;
+  font-size: 13px;
+  color: #475569;
+  font-weight: 500;
+}
+
+.purpose-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  min-width: 30px;
+  text-align: right;
+}
+
+.purpose-percent {
+  font-size: 12px;
+  color: #64748b;
+  min-width: 45px;
+  text-align: right;
+}
+
+/* Daily Trends Chart */
+.daily-trends-container {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 200px;
+  padding: 20px 0;
+  overflow-x: auto;
+}
+
+.daily-bar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 40px;
+}
+
+.daily-bar-value {
+  font-size: 11px;
+  font-weight: 700;
+  color: #5e3b71;
+}
+
+.daily-bar-wrapper {
+  width: 24px;
+  height: 120px;
+  background: #f1f5f9;
+  border-radius: 4px 4px 0 0;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+}
+
+.daily-bar-fill {
+  width: 100%;
+  background: linear-gradient(180deg, #5e3b71 0%, #8b5cf6 100%);
+  border-radius: 4px 4px 0 0;
+  transition: height 0.5s ease;
+}
+
+.daily-bar-label {
+  font-size: 10px;
+  color: #64748b;
+  white-space: nowrap;
+  transform: rotate(-45deg);
+  transform-origin: left center;
+}
+
+/* Top Students Table */
+.table-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.table-header-flex h3 {
+  color: #5e3b71;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.table-count {
+  font-size: 12px;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+#topStudentsTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+#topStudentsTable thead tr {
+  background: #f8fafc;
+}
+
+#topStudentsTable th {
+  padding: 12px 15px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+#topStudentsTable td {
+  padding: 12px 15px;
+  font-size: 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+#topStudentsTable tbody tr:hover {
+  background: #f8fafc;
+}
+
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 14px;
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.rank-badge.top {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.3);
+}
+
+.student-name {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.course-badge {
+  background: #ede9fe;
+  color: #5e3b71;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.no-data {
+  text-align: center;
+  color: #94a3b8;
+  padding: 30px !important;
+  font-style: italic;
+}
+
+/* Stat Icon Colors */
+.stat-icon.blue {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.stat-icon.green {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.stat-icon.purple {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+}
+
+.stat-icon.orange {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+.stat-icon.red {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.stat-icon i {
+  color: white;
+  font-size: 1.2rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .filter-row {
+    flex-direction: column;
+  }
+  
+  .filter-row .filter-group {
+    min-width: 100%;
+  }
+  
+  .reports-charts-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .daily-trends-container {
+    height: 150px;
+  }
 }

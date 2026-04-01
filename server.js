@@ -902,6 +902,44 @@ app.get('/api/admin/records', (req, res) => {
     });
 });
 
+// Get sit-in reports data with analytics (admin)
+app.get('/api/admin/sitin-reports', (req, res) => {
+    const { dateFrom, dateTo, labRoom, course } = req.query;
+    let query = `
+        SELECT sr.*, u.id_number, u.first_name, u.last_name, u.course, u.course_level
+        FROM sit_in_records sr
+        JOIN users u ON sr.user_id = u.id
+        WHERE 1=1
+    `;
+    const params = [];
+
+    if (dateFrom) {
+        query += ` AND sr.date >= ?`;
+        params.push(dateFrom);
+    }
+    if (dateTo) {
+        query += ` AND sr.date <= ?`;
+        params.push(dateTo);
+    }
+    if (labRoom) {
+        query += ` AND sr.lab_room = ?`;
+        params.push(labRoom);
+    }
+    if (course) {
+        query += ` AND u.course = ?`;
+        params.push(course);
+    }
+
+    query += ` ORDER BY sr.date DESC, sr.time_in DESC`;
+
+    db.all(query, params, (err, records) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to fetch reports: ' + err.message });
+        }
+        res.json(records);
+    });
+});
+
 // Get currently active sit-ins (admin)
 app.get('/api/admin/active-sitins', (req, res) => {
     const query = `
