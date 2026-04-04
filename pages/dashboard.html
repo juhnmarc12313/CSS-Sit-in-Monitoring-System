@@ -126,6 +126,7 @@
         </button>
       </div>
       <div id="modalSearchResults" class="modal-search-results"></div>
+      <div id="modalStudentDetails" class="modal-student-details hidden"></div>
     </div>
   </div>
 
@@ -876,6 +877,9 @@
             </div>
           </div>
           <div class="student-info-actions">
+            <button class="btn-primary" onclick="checkInStudentFromInfo()">
+              <i class="fas fa-sign-in-alt"></i> Sit-In
+            </button>
             <button class="btn-secondary" onclick="closeStudentInfo()">
               <i class="fas fa-times"></i> Close
             </button>
@@ -958,16 +962,16 @@
           <h2><i class="fas fa-laptop"></i> Record Sit-in</h2>
           <form id="adminSitInForm">
             <div class="form-group">
-              <label for="studentIdNumber">Student ID Number</label>
-              <input type="text" id="studentIdNumber" required placeholder="Search student ID" readonly />
+              <label for="sitInStudentId">Student ID Number</label>
+              <input type="text" id="sitInStudentId" required placeholder="Search student ID" readonly />
             </div>
             <div class="form-group">
-              <label for="studentName">Student Name</label>
-              <input type="text" id="studentName" required placeholder="Enter student name" readonly />
+              <label for="sitInStudentName">Student Name</label>
+              <input type="text" id="sitInStudentName" required placeholder="Enter student name" readonly />
             </div>
             <div class="form-group">
-              <label for="studentSession">Remaining Session</label>
-              <input type="number" id="studentSession" required min="0" value="30" readonly />
+              <label for="sitInStudentSession">Remaining Session</label>
+              <input type="number" id="sitInStudentSession" required min="0" value="30" readonly />
             </div>
             <div class="form-group">
               <label for="labRoom">Laboratory Room</label>

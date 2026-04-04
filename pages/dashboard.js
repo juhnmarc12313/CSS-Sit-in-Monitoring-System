@@ -383,9 +383,11 @@ async function adminSearchStudent() {
                 studentInfoForm.style.display = 'none';
                 searchResults.innerHTML = '<p class="no-data-message">No student found with that ID number or name</p>';
             } else if (students.length === 1) {
-                // Single result - redirect to sit-in form with student info
+                // Single result - show student info
                 const student = students[0];
-                redirectToSitInForm(student);
+                displayStudentInfo(student);
+                document.getElementById('searchResults').innerHTML = '';
+                studentInfoForm.style.display = 'block';
             } else {
                 // Multiple results - show list
                 studentInfoForm.style.display = 'none';
@@ -438,7 +440,10 @@ async function selectStudentForSitIn(studentId) {
 
         if (response.ok) {
             const student = await response.json();
-            redirectToSitInForm(student);
+            // Show student info instead of redirecting to sit-in
+            document.getElementById('searchResults').innerHTML = '';
+            displayStudentInfo(student);
+            document.getElementById('studentInfoForm').style.display = 'block';
         }
     } catch (error) {
         console.error('Error loading student:', error);
@@ -489,6 +494,16 @@ function displayStudentInfo(student) {
     document.getElementById('studentEmail').textContent = student.email || 'N/A';
     document.getElementById('studentStatus').textContent = student.is_active ? 'Active' : 'Inactive';
     document.getElementById('studentStatus').style.color = student.is_active ? '#28a745' : '#dc3545';
+    
+    // Store student data for check-in
+    window.currentStudentInfo = student;
+}
+
+function checkInStudentFromInfo() {
+    const student = window.currentStudentInfo;
+    if (!student) return;
+    
+    redirectToSitInFormFromModal(student);
 }
 
 function closeStudentInfo() {
@@ -688,13 +703,15 @@ async function modalSearchStudent() {
 
             if (students.length === 0) {
                 resultsContainer.innerHTML = '<p class="no-data-message">No student found with that ID number or name</p>';
+                document.getElementById('modalStudentDetails').classList.add('hidden');
             } else if (students.length === 1) {
-                // Single result - redirect to sit-in form
+                // Single result - show detailed info in modal
                 const student = students[0];
-                redirectToSitInFormFromModal(student);
+                displayModalStudentInfo(student);
             } else {
                 // Multiple results - show list
                 displayModalSearchResults(students);
+                document.getElementById('modalStudentDetails').classList.add('hidden');
             }
         } else if (response.status === 404) {
             resultsContainer.innerHTML = '<p class="no-data-message">No student found with that ID number or name</p>';
@@ -719,10 +736,138 @@ function displayModalSearchResults(students) {
                 <span>Sessions: ${student.remaining_sessions || 0}</span>
             </div>
             <button class="btn-primary btn-small">
-                <i class="fas fa-sign-in-alt"></i> Check In
+                <i class="fas fa-eye"></i> View Details
             </button>
         </div>
     `).join('');
+}
+
+// Display detailed student info in modal
+function displayModalStudentInfo(student) {
+    const resultsContainer = document.getElementById('modalSearchResults');
+    const detailsContainer = document.getElementById('modalStudentDetails');
+    
+    // Store current student for the check-in button
+    window.currentModalStudent = student;
+    
+    // Clear list
+    resultsContainer.innerHTML = '';
+    
+    // Create detailed card
+    const initial = student.first_name ? student.first_name.charAt(0).toUpperCase() : '?';
+    const statusClass = student.is_active ? 'status-active' : 'status-inactive';
+    const statusText = student.is_active ? 'Active' : 'Inactive';
+    
+    detailsContainer.innerHTML = `
+        <div class="student-detail-card animate__animated animate__fadeIn">
+            <div class="detail-header">
+                <div class="detail-avatar">${initial}</div>
+                <div class="detail-title">
+                    <h3>${escapeHtml(student.first_name)} ${escapeHtml(student.last_name)}</h3>
+                    <span class="detail-id">ID: ${escapeHtml(student.id_number)}</span>
+                </div>
+                <span class="status-badge ${statusClass}">${statusText}</span>
+            </div>
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <label>Course & Level</label>
+                    <p>${escapeHtml(student.course)} - ${student.course_level} Year</p>
+                </div>
+                <div class="detail-item">
+                    <label>Email Address</label>
+                    <p>${escapeHtml(student.email)}</p>
+                </div>
+                <div class="detail-item">
+                    <label>Sessions Remaining</label>
+                    <p class="sessions-highlight">${student.remaining_sessions || 0} left</p>
+                </div>
+                <!-- New Dropdowns for Direct Check-in -->
+                <div class="detail-item">
+                    <label for="modalLabRoom">Laboratory Room</label>
+                    <select id="modalLabRoom" class="modal-dropdown">
+                        <option value="" disabled selected>Select Room</option>
+                        <option value="Lab 524">Lab 524</option>
+                        <option value="Lab 526">Lab 526</option>
+                        <option value="Lab 528">Lab 528</option>
+                        <option value="Lab 530">Lab 530</option>
+                        <option value="Lab 544">Lab 542</option>
+                        <option value="Lab 542">Lab 544</option>
+                    </select>
+                </div>
+                <div class="detail-item full-width">
+                    <label for="modalPurpose">Purpose of Sit-in</label>
+                    <select id="modalPurpose" class="modal-dropdown">
+                        <option value="" disabled selected>Select Purpose</option>
+                        <option value="C-Programming">C-Programming</option>
+                        <option value="Java Programming">Java Programming</option>
+                        <option value="Python Programming">Python Programming</option>
+                        <option value="Web Development">Web Development</option>
+                        <option value="Database Management">Database Management</option>
+                        <option value="Networking">Networking</option>
+                        <option value="Machine Learning">Machine Learning</option>
+                        <option value="Research/Thesis">Research/Thesis</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+            </div>
+            <div class="detail-actions">
+                <button class="btn-primary-gradient" onclick='checkInFromModal()'>
+                    <i class="fas fa-check-circle"></i> Complete Check-in
+                </button>
+                <div class="secondary-actions">
+                    <button class="btn-link" onclick='redirectToSitInFormFromModal(window.currentModalStudent)'>
+                        Advanced Check-in
+                    </button>
+                    <button class="btn-link" onclick="openSearchModal()">
+                        <i class="fas fa-arrow-left"></i> Back to Search
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    detailsContainer.classList.remove('hidden');
+}
+
+// Perform direct check-in from the search modal card
+async function checkInFromModal() {
+    const student = window.currentModalStudent;
+    if (!student) return;
+
+    const labRoom = document.getElementById('modalLabRoom').value;
+    const purpose = document.getElementById('modalPurpose').value;
+
+    if (!labRoom || !purpose) {
+        showErrorModal('Missing Fields', 'Please select both Laboratory Room and Purpose.');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/sitin/checkin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: student.id,
+                lab_room: labRoom,
+                purpose: purpose
+            })
+        });
+
+        if (response.ok) {
+            closeSearchModal();
+            showCheckInSuccessModal(student, labRoom, purpose);
+            
+            // Refresh stats if on admin dashboard
+            if (typeof loadAdminStats === 'function') loadAdminStats();
+            if (typeof loadActiveSitins === 'function') loadActiveSitins();
+        } else {
+            const error = await response.json();
+            showErrorModal('Check-in Failed', error.error || 'Server error occurred');
+        }
+    } catch (error) {
+        console.error('Error checking in:', error);
+        showErrorModal('Network Error', 'Could not connect to the server');
+    }
 }
 
 // Redirect to sit-in form from modal
@@ -731,9 +876,9 @@ function redirectToSitInFormFromModal(student) {
 
     // Get the sit-in modal form elements
     const sitInModal = document.getElementById('sitInModal');
-    const studentIdInput = sitInModal.querySelector('#studentIdNumber');
-    const studentNameInput = sitInModal.querySelector('#studentName');
-    const studentSessionInput = sitInModal.querySelector('#studentSession');
+    const studentIdInput = sitInModal.querySelector('#sitInStudentId');
+    const studentNameInput = sitInModal.querySelector('#sitInStudentName');
+    const studentSessionInput = sitInModal.querySelector('#sitInStudentSession');
     const labRoomInput = sitInModal.querySelector('#labRoom');
     const sitInPurposeInput = sitInModal.querySelector('#sitInPurpose');
 
@@ -870,7 +1015,7 @@ async function selectStudentForSitInFromModal(studentId) {
 
         if (response.ok) {
             const student = await response.json();
-            redirectToSitInFormFromModal(student);
+            displayModalStudentInfo(student);
         }
     } catch (error) {
         console.error('Error loading student:', error);
