@@ -812,7 +812,7 @@ function displayModalStudentInfo(student) {
             </div>
             <div class="detail-actions">
                 <button class="btn-primary-gradient" onclick='checkInFromModal()'>
-                    <i class="fas fa-check-circle"></i> Complete Check-in
+                    <i class="fas fa-check-circle"></i> Sit-in
                 </button>
                 <div class="secondary-actions">
                     <button class="btn-link" onclick='redirectToSitInFormFromModal(window.currentModalStudent)'>
