@@ -168,6 +168,9 @@ function displayStudents(students) {
                 <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                 <td>
                     <div class="action-buttons">
+                        <button class="btn-action reset" onclick="resetStudentSessions(${student.id}, '${student.first_name} ${student.last_name}')" title="Reset Sessions">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
                         <button class="btn-action edit" onclick="editStudentSessions(${student.id}, ${student.remaining_sessions || 0})" title="Edit Sessions">
                             <i class="fas fa-plus-circle"></i>
                         </button>
@@ -683,6 +686,43 @@ function editStudentSessions(studentId, currentSessions) {
   }
 
   updateStudentSessions(studentId, sessions);
+}
+
+// Reset student sessions to default (30)
+async function resetStudentSessions(studentId, studentName) {
+  if (
+    !confirm(
+      `Are you sure you want to reset remaining sessions for ${studentName} to 30?`,
+    )
+  ) {
+    return;
+  }
+
+  showLoading(true);
+  try {
+    const response = await fetch(`/api/admin/students/${studentId}/sessions`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ remaining_sessions: 30 }),
+    });
+
+    if (response.ok) {
+      showSuccessModal(
+        "Sessions Reset",
+        `${studentName}'s remaining sessions have been reset to 30 successfully!`,
+      );
+      loadAllStudents(); // Refresh the table
+    } else {
+      const error = await response.json();
+      showErrorModal("Error", error.error || "Failed to reset sessions");
+    }
+  } catch (error) {
+    console.error("Error resetting sessions:", error);
+    showErrorModal("Error", "An error occurred while resetting sessions");
+  }
+  showLoading(false);
 }
 
 async function updateStudentSessions(studentId, sessions) {
@@ -2131,12 +2171,12 @@ function displayComputerStatus(labs) {
                     <div class="pc-visualization">
                         <div class="pc-icon-grid">
                             ${Array(12)
-                              .fill(0)
-                              .map(
-                                (_, i) =>
-                                  `<i class="fas fa-desktop pc-dot ${i < 12 - Math.round((lab.available_pcs / lab.total_pcs) * 12) ? "busy" : ""}"></i>`,
-                              )
-                              .join("")}
+          .fill(0)
+          .map(
+            (_, i) =>
+              `<i class="fas fa-desktop pc-dot ${i < 12 - Math.round((lab.available_pcs / lab.total_pcs) * 12) ? "busy" : ""}"></i>`,
+          )
+          .join("")}
                         </div>
                         <div class="usage-stats">
                             <span class="percent">${100 - percent}%</span>
@@ -3152,8 +3192,8 @@ function renderLabUsageChart(labCounts) {
   container.innerHTML = `
         <div class="bar-chart-container">
             ${entries
-              .map(
-                ([lab, count], index) => `
+      .map(
+        ([lab, count], index) => `
                 <div class="bar-chart-item">
                     <span class="bar-label">${lab}</span>
                     <div class="bar-wrapper">
@@ -3163,8 +3203,8 @@ function renderLabUsageChart(labCounts) {
                     </div>
                 </div>
             `,
-              )
-              .join("")}
+      )
+      .join("")}
         </div>
     `;
 }
@@ -3196,8 +3236,8 @@ function renderPurposeChart(purposeCounts) {
   container.innerHTML = `
         <div class="purpose-chart-container">
             ${entries
-              .map(
-                ([purpose, count], index) => `
+      .map(
+        ([purpose, count], index) => `
                 <div class="purpose-item">
                     <div class="purpose-color" style="background: ${colors[index % colors.length]}"></div>
                     <span class="purpose-label">${purpose}</span>
@@ -3205,8 +3245,8 @@ function renderPurposeChart(purposeCounts) {
                     <span class="purpose-percent">${Math.round((count / total) * 100)}%</span>
                 </div>
             `,
-              )
-              .join("")}
+      )
+      .join("")}
         </div>
     `;
 }
@@ -3232,13 +3272,13 @@ function renderDailyTrendsChart(dailyCounts) {
   container.innerHTML = `
         <div class="daily-trends-container">
             ${entries
-              .map(([date, count]) => {
-                const d = new Date(date);
-                const formatted = d.toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                });
-                return `
+      .map(([date, count]) => {
+        const d = new Date(date);
+        const formatted = d.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
+        return `
                     <div class="daily-bar-item">
                         <span class="daily-bar-value">${count}</span>
                         <div class="daily-bar-wrapper">
@@ -3247,8 +3287,8 @@ function renderDailyTrendsChart(dailyCounts) {
                         <span class="daily-bar-label">${formatted}</span>
                     </div>
                 `;
-              })
-              .join("")}
+      })
+      .join("")}
         </div>
     `;
 }

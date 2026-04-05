@@ -136,7 +136,7 @@ function initializeDatabase() {
                 console.error('Error creating sessions table:', err.message);
             } else {
                 console.log('Sessions table created/verified');
-                
+
                 // Clear all existing sessions on server startup (force logout)
                 db.run(`UPDATE sessions SET logout_time = CURRENT_TIMESTAMP WHERE logout_time IS NULL`, (clearErr) => {
                     if (clearErr) {
@@ -504,7 +504,7 @@ app.post('/api/sitin/checkout', (req, res) => {
 
     // First, find the user associated with this record to decrement their sessions
     const findUserQuery = `SELECT user_id FROM sit_in_records WHERE id = ?`;
-    
+
     db.get(findUserQuery, [record_id], (err, record) => {
         if (err || !record) {
             return res.status(500).json({ error: 'Failed to find record user: ' + (err ? err.message : 'Not found') });
@@ -516,14 +516,14 @@ app.post('/api/sitin/checkout', (req, res) => {
         db.serialize(() => {
             // 1. Update the record time_out
             const updateRecordQuery = `UPDATE sit_in_records SET time_out = CURRENT_TIMESTAMP WHERE id = ? AND time_out IS NULL`;
-            db.run(updateRecordQuery, [record_id], function(err) {
+            db.run(updateRecordQuery, [record_id], function (err) {
                 if (err || this.changes === 0) {
                     return res.status(500).json({ error: 'Failed to update record time_out' });
                 }
 
                 // 2. Decrement student sessions
                 const updateSessionsQuery = `UPDATE users SET remaining_sessions = MAX(0, remaining_sessions - 1) WHERE id = ? AND role = 'student'`;
-                db.run(updateSessionsQuery, [userId], function(err) {
+                db.run(updateSessionsQuery, [userId], function (err) {
                     if (err) {
                         console.error('Failed to decrement sessions:', err.message);
                     }
@@ -576,7 +576,7 @@ app.get('/api/sitin/records/user/:user_id', (req, res) => {
 // Submit feedback (student)
 app.post('/api/feedbacks', (req, res) => {
     const { user_id, rating, comment } = req.body;
-    
+
     if (!user_id || !comment) {
         return res.status(400).json({ error: 'User ID and comment are required' });
     }
@@ -585,7 +585,7 @@ app.post('/api/feedbacks', (req, res) => {
     const defaultRating = rating || 5;
 
     const query = `INSERT INTO feedbacks (user_id, rating, comment) VALUES (?, ?, ?)`;
-    db.run(query, [user_id, defaultRating, comment], function(err) {
+    db.run(query, [user_id, defaultRating, comment], function (err) {
         if (err) {
             return res.status(500).json({ error: 'Failed to submit feedback: ' + err.message });
         }
@@ -596,7 +596,7 @@ app.post('/api/feedbacks', (req, res) => {
 // Get user's own feedbacks
 app.get('/api/feedbacks/user/:user_id', (req, res) => {
     const { user_id } = req.params;
-    
+
     const query = `
         SELECT * FROM feedbacks 
         WHERE user_id = ? 
@@ -624,7 +624,7 @@ app.post('/api/reservations', (req, res) => {
     }
 
     const query = `INSERT INTO reservations (user_id, lab_room, date, time, purpose) VALUES (?, ?, ?, ?, ?)`;
-    db.run(query, [user_id, lab_room, date, time, purpose], function(err) {
+    db.run(query, [user_id, lab_room, date, time, purpose], function (err) {
         if (err) {
             return res.status(500).json({ error: 'Failed to submit reservation: ' + err.message });
         }
@@ -636,7 +636,7 @@ app.post('/api/reservations', (req, res) => {
 app.get('/api/reservations/user/:user_id', (req, res) => {
     const { user_id } = req.params;
     const query = `SELECT * FROM reservations WHERE user_id = ? ORDER BY date DESC, time DESC`;
-    
+
     db.all(query, [user_id], (err, reservations) => {
         if (err) {
             return res.status(500).json({ error: 'Failed to fetch reservations: ' + err.message });
@@ -653,7 +653,7 @@ app.get('/api/admin/reservations', (req, res) => {
         JOIN users u ON r.user_id = u.id
         ORDER BY r.date DESC, r.time DESC
     `;
-    
+
     db.all(query, [], (err, reservations) => {
         if (err) {
             return res.status(500).json({ error: 'Failed to fetch reservations: ' + err.message });
@@ -672,7 +672,7 @@ app.put('/api/admin/reservations/:id/status', (req, res) => {
     }
 
     const query = `UPDATE reservations SET status = ? WHERE id = ?`;
-    db.run(query, [status, id], function(err) {
+    db.run(query, [status, id], function (err) {
         if (err) {
             return res.status(500).json({ error: 'Failed to update reservation: ' + err.message });
         }
@@ -748,7 +748,7 @@ app.put('/api/user/:id/role', (req, res) => {
 
 // Get all students (admin)
 app.get('/api/admin/students', (req, res) => {
-    const query = `SELECT id, id_number, first_name, last_name, middle_name, course, course_level, email, address, role, is_active, remaining_sessions FROM users WHERE role = 'student' ORDER BY last_name, first_name`;
+    const query = `SELECT id, id_number, first_name, last_name, middle_name, course, course_level, email, address, role, is_active, remaining_sessions FROM users WHERE role = 'student' AND is_active = 1 ORDER BY last_name, first_name`;
 
     db.all(query, [], (err, students) => {
         if (err) {

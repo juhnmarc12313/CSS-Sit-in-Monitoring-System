@@ -2541,6 +2541,11 @@ body {
   font-size: 13px;
 }
 
+.btn-action.reset {
+  background: #fef3c7;
+  color: #b45309;
+}
+
 .btn-action.edit {
   background: #e0f2fe;
   color: #0369a1;
@@ -3710,15 +3715,15 @@ body {
   .filter-row {
     flex-direction: column;
   }
-  
+
   .filter-row .filter-group {
     min-width: 100%;
   }
-  
+
   .reports-charts-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .daily-trends-container {
     height: 150px;
   }
@@ -3726,161 +3731,160 @@ body {
 
 /* --- Search Modal Student Details Card --- */
 .modal-student-details {
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid #eee;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
 }
 
 .student-detail-card {
-    background: #fff;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-    border: 1px solid #f0f0f0;
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f0f0f0;
 }
 
 .detail-header {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    margin-bottom: 20px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid #f8f8f8;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #f8f8f8;
 }
 
 .detail-avatar {
-    width: 60px;
-    height: 60px;
-    background: linear-gradient(135deg, #5e3b71 0%, #3d264a 100%);
-    color: white;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    font-weight: 700;
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #5e3b71 0%, #3d264a 100%);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 700;
 }
 
 .detail-title h3 {
-    margin: 0;
-    font-size: 18px;
-    color: #333;
+  margin: 0;
+  font-size: 18px;
+  color: #333;
 }
 
 .detail-id {
-    font-size: 14px;
-    color: #666;
+  font-size: 14px;
+  color: #666;
 }
 
 .detail-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 15px;
-    margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+  margin-bottom: 20px;
 }
 
 .detail-item label {
-    display: block;
-    font-size: 12px;
-    color: #999;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px;
+  display: block;
+  font-size: 12px;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
 }
 
 .detail-item p {
-    font-size: 14px;
-    color: #333;
-    font-weight: 500;
-    margin: 0;
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+  margin: 0;
 }
 
 .sessions-highlight {
-    color: #5e3b71 !important;
-    font-weight: 700 !important;
+  color: #5e3b71 !important;
+  font-weight: 700 !important;
 }
 
 .detail-actions {
-    display: flex;
-    gap: 10px;
-    flex-direction: column;
+  display: flex;
+  gap: 10px;
+  flex-direction: column;
 }
 
 .btn-primary-gradient {
-    background: linear-gradient(135deg, #5e3b71 0%, #3d264a 100%);
-    color: white;
-    border: none;
-    padding: 12px;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    transition: all 0.3s ease;
+  background: linear-gradient(135deg, #5e3b71 0%, #3d264a 100%);
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.3s ease;
 }
 
 .btn-primary-gradient:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(94, 59, 113, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(94, 59, 113, 0.3);
 }
 
 .modal-search-result-item {
-    cursor: pointer;
-    transition: background 0.2s;
+  cursor: pointer;
+  transition: background 0.2s;
 }
 
 .modal-search-result-item:hover {
-    background: #f8f5fa;
+  background: #f8f5fa;
 }
 
 
 
 /* --- Modal Dropdowns and Details Card Improvements --- */
 .modal-dropdown {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1.5px solid #e2e8f0;
-    border-radius: 8px;
-    font-size: 14px;
-    color: #333;
-    background-color: #f8fafc;
-    transition: all 0.2s;
-    margin-top: 5px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #333;
+  background-color: #f8fafc;
+  transition: all 0.2s;
+  margin-top: 5px;
 }
 
 .modal-dropdown:focus {
-    outline: none;
-    border-color: #5e3b71;
-    background-color: #fff;
-    box-shadow: 0 0 0 3px rgba(94, 59, 113, 0.1);
+  outline: none;
+  border-color: #5e3b71;
+  background-color: #fff;
+  box-shadow: 0 0 0 3px rgba(94, 59, 113, 0.1);
 }
 
 .detail-item.full-width {
-    grid-column: span 2;
+  grid-column: span 2;
 }
 
 .secondary-actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
 }
 
 .btn-link {
-    background: none;
-    border: none;
-    color: #5e3b71;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    text-decoration: underline;
-    padding: 5px;
-    transition: color 0.2s;
+  background: none;
+  border: none;
+  color: #5e3b71;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 5px;
+  transition: color 0.2s;
 }
 
 .btn-link:hover {
-    color: #3d264a;
+  color: #3d264a;
 }
-
