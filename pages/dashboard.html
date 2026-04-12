@@ -28,9 +28,6 @@
       <a href="#" class="nav-link" onclick="showSection('reservation')">
         <i class="fas fa-calendar-alt"></i> Reservation
       </a>
-      <a href="#" class="nav-link" onclick="showSection('studentFeedback')">
-        <i class="fas fa-comment-dots"></i> Feedback
-      </a>
       <a href="#" class="nav-link" onclick="showSection('notifications')">
         <i class="fas fa-bell"></i> Notification
       </a>
@@ -499,6 +496,7 @@
                     <th><i class="fas fa-sign-in-alt"></i> Time In</th>
                     <th><i class="fas fa-sign-out-alt"></i> Time Out</th>
                     <th><i class="fas fa-stopwatch"></i> Duration</th>
+                    <th><i class="fas fa-tasks"></i> Actions</th>
                   </tr>
                 </thead>
                 <tbody id="fullHistoryTableBody">
@@ -672,48 +670,6 @@
               <li>Please arrive on time. Your slot will be given to others after 15 minutes.</li>
               <li>Maximum of 3 hours per session.</li>
             </ul>
-          </div>
-        </div>
-      </section>
-
-      <!-- Feedback Section (New for Students) -->
-      <section class="content-section hidden" id="studentFeedbackSection">
-        <h2 class="section-title animate__animated animate__fadeInUp">
-          <i class="fas fa-comment-dots"></i> Feedback & Suggestions
-        </h2>
-
-        <div class="feedback-layout animate__animated animate__fadeInUp">
-          <!-- Submission Card -->
-          <div class="feedback-card submission-card">
-            <div class="card-hero">
-              <i class="fas fa-paper-plane"></i>
-              <h3>Share your experience</h3>
-            </div>
-            <form id="studentFeedbackForm">
-              <div class="form-group">
-                <label for="feedbackComment"><i class="fas fa-pen"></i> Message</label>
-                <textarea id="feedbackComment" rows="6"
-                  placeholder="Tell us how we can improve. Your feedback helps us build a better environment for everyone."
-                  required></textarea>
-              </div>
-              <button type="submit" class="btn-primary-gradient">
-                <span>Submit Feedback</span>
-                <i class="fas fa-chevron-right"></i>
-              </button>
-            </form>
-          </div>
-
-          <!-- History Card -->
-          <div class="feedback-card history-card">
-            <div class="history-header">
-              <h3><i class="fas fa-history"></i> My Previous Feedback</h3>
-            </div>
-            <div id="userFeedbackList" class="feedback-list">
-              <div class="empty-feedbacks">
-                <i class="fas fa-comments"></i>
-                <p>No feedback submitted yet. Share your thoughts with us!</p>
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -1297,6 +1253,38 @@
   <div class="loading-overlay" id="loadingOverlay">
     <div class="spinner"></div>
     <p>Loading...</p>
+  </div>
+
+  <!-- History Feedback Modal -->
+  <div id="historyFeedbackModal" class="modal hidden">
+    <div class="modal-content animate__animated animate__zoomIn" style="max-width: 500px;">
+      <span class="modal-close" onclick="closeHistoryFeedbackModal()">&times;</span>
+      <div class="modal-header-gradient">
+        <i class="fas fa-comment-dots"></i>
+        <h2>Session Feedback</h2>
+      </div>
+      <div class="modal-body">
+        <p class="modal-instruction">Share your experience or report any issues during this session.</p>
+        <div id="sessionSummaryInfo" class="session-summary-card">
+          <!-- Session details populated by JS -->
+        </div>
+        <form id="historyFeedbackForm">
+          <input type="hidden" id="feedbackRecordId" />
+          <div class="form-group">
+            <label for="historyFeedbackComment">Your Message</label>
+            <textarea id="historyFeedbackComment" rows="5" placeholder="Enter your comments or suggestions here..."
+              required></textarea>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="closeHistoryFeedbackModal()">Cancel</button>
+            <button type="submit" class="btn-primary-gradient">
+              <span>Submit Feedback</span>
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 
   <script src="/pages/dashboard.js"></script>

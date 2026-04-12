@@ -177,14 +177,22 @@ function initializeDatabase() {
             CREATE TABLE IF NOT EXISTS feedbacks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
+                sit_in_record_id INTEGER,
                 rating INTEGER,
                 comment TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (sit_in_record_id) REFERENCES sit_in_records(id) ON DELETE SET NULL
             )
         `, (err) => {
             if (err) console.error('Error creating feedbacks table:', err.message);
-            else console.log('Feedbacks table created/verified');
+            else {
+                console.log('Feedbacks table created/verified');
+                // Ensure sit_in_record_id exists for older databases
+                db.run(`ALTER TABLE feedbacks ADD COLUMN sit_in_record_id INTEGER`, (alterErr) => {
+                    // Ignore error if column already exists
+                });
+            }
         });
 
         // Reservations Table
@@ -575,17 +583,17 @@ app.get('/api/sitin/records/user/:user_id', (req, res) => {
 
 // Submit feedback (student)
 app.post('/api/feedbacks', (req, res) => {
-    const { user_id, rating, comment } = req.body;
+    const { user_id, rating, comment, sit_in_record_id } = req.body;
 
     if (!user_id || !comment) {
         return res.status(400).json({ error: 'User ID and comment are required' });
     }
 
-    // Default rating to 5 since we removed it from the UI
+    // Default rating to 5
     const defaultRating = rating || 5;
 
-    const query = `INSERT INTO feedbacks (user_id, rating, comment) VALUES (?, ?, ?)`;
-    db.run(query, [user_id, defaultRating, comment], function (err) {
+    const query = `INSERT INTO feedbacks (user_id, rating, comment, sit_in_record_id) VALUES (?, ?, ?, ?)`;
+    db.run(query, [user_id, defaultRating, comment, sit_in_record_id || null], function (err) {
         if (err) {
             return res.status(500).json({ error: 'Failed to submit feedback: ' + err.message });
         }

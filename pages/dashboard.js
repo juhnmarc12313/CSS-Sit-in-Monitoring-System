@@ -1614,26 +1614,19 @@ function showSection(sectionName) {
         loadUserReservations();
       }
       break;
-    case "studentFeedback":
-      document
-        .getElementById("studentFeedbackSection")
-        .classList.remove("hidden");
-      activateNavLink(3);
-      loadUserFeedbacks();
-      break;
     case "notifications":
       document
         .getElementById("notificationsSection")
         .classList.remove("hidden");
-      activateNavLink(4);
+      activateNavLink(3);
       break;
     case "editProfile":
       document.getElementById("editProfileSection").classList.remove("hidden");
-      activateNavLink(5);
+      activateNavLink(4);
       break;
     case "history":
       document.getElementById("historySection").classList.remove("hidden");
-      activateNavLink(6);
+      activateNavLink(5);
       displayFullHistory();
       break;
   }
@@ -1758,6 +1751,11 @@ function renderHistoryTable(records) {
                 <td><i class="far fa-clock" style="color: #10b981; margin-right: 5px;"></i> ${formatTime(record.time_in)}</td>
                 <td><i class="far fa-clock" style="color: #ef4444; margin-right: 5px;"></i> ${record.time_out ? formatTime(record.time_out) : "-"}</td>
                 <td style="font-weight: 700; color: #1e293b;">${duration}</td>
+                <td class="action-cell">
+                    <button class="btn-action view" onclick="openHistoryFeedbackModal(${record.id}, '${record.date}', '${record.lab_room}')" title="Leave Feedback">
+                        <i class="fas fa-comment-medical"></i>
+                    </button>
+                </td>
             </tr>
         `;
     })
@@ -2913,99 +2911,6 @@ function setupEventListeners() {
     });
   }
 
-  // Student Feedback form submission
-  const feedbackForm = document.getElementById("studentFeedbackForm");
-  if (feedbackForm) {
-    feedbackForm.addEventListener("submit", async function (e) {
-      e.preventDefault();
-      const comment = document.getElementById("feedbackComment").value.trim();
-
-      if (!comment) {
-        showErrorModal(
-          "Empty Message",
-          "Please enter a message before submitting.",
-        );
-        return;
-      }
-
-      showLoading(true);
-      try {
-        const response = await fetch("/api/feedbacks", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: currentUser.id, comment }),
-        });
-
-        if (response.ok) {
-          showSuccessModal(
-            "Feedback Submitted",
-            "Thank you! Your feedback has been received and helps us improve our services.",
-          );
-          feedbackForm.reset();
-          loadUserFeedbacks(); // Refresh the history list
-        } else {
-          const error = await response.json();
-          showErrorModal(
-            "Submission Failed",
-            error.error || "Failed to submit feedback",
-          );
-        }
-      } catch (error) {
-        console.error("Error submitting feedback:", error);
-        showErrorModal(
-          "Error",
-          "An unexpected error occurred. Please try again.",
-        );
-      }
-      showLoading(false);
-    });
-  }
-
-  async function loadUserFeedbacks() {
-    const listElement = document.getElementById("userFeedbackList");
-    if (!listElement) return;
-
-    try {
-      const response = await fetch(`/api/feedbacks/user/${currentUser.id}`);
-      if (response.ok) {
-        const feedbacks = await response.json();
-        displayUserFeedbacks(feedbacks);
-      }
-    } catch (error) {
-      console.error("Error loading user feedbacks:", error);
-    }
-  }
-
-  function displayUserFeedbacks(feedbacks) {
-    const listElement = document.getElementById("userFeedbackList");
-    if (!listElement) return;
-
-    if (!feedbacks || feedbacks.length === 0) {
-      listElement.innerHTML = `
-            <div class="empty-feedbacks">
-                <i class="fas fa-comments"></i>
-                <p>No feedback submitted yet. Share your thoughts with us!</p>
-            </div>
-        `;
-      return;
-    }
-
-    listElement.innerHTML = feedbacks
-      .map((f, index) => {
-        const delay = (index * 0.1).toFixed(1);
-        return `
-            <div class="feedback-item animate__animated animate__fadeInRight" style="animation-delay: ${delay}s">
-                <div class="feedback-item-header">
-                    <span class="date"><i class="far fa-calendar-alt"></i> ${formatDate(f.created_at)}</span>
-                    <span class="time"><i class="far fa-clock"></i> ${formatTime(f.created_at)}</span>
-                </div>
-                <div class="feedback-item-content">${escapeHtml(f.comment)}</div>
-            </div>
-        `;
-      })
-      .join("");
-  }
-
   // Close notification panel when clicking outside
   document.addEventListener("click", function (event) {
     const panel = document.getElementById("notificationPanel");
@@ -3489,6 +3394,93 @@ function closeSitInModal() {
   if (modal) modal.classList.add("hidden");
   const form = document.getElementById("adminSitInForm");
   if (form) form.reset();
+}
+
+// =============================================
+// History Feedback Functions
+// =============================================
+function openHistoryFeedbackModal(recordId, date, labRoom) {
+  const modal = document.getElementById("historyFeedbackModal");
+  const recordIdInput = document.getElementById("feedbackRecordId");
+  const sessionInfo = document.getElementById("sessionSummaryInfo");
+
+  if (recordIdInput) recordIdInput.value = recordId;
+
+  if (sessionInfo) {
+    sessionInfo.innerHTML = `
+            <div class="session-info-item">
+                <span class="label">Date:</span>
+                <span class="value">${formatDate(date)}</span>
+            </div>
+            <div class="session-info-item">
+                <span class="label">Lab:</span>
+                <span class="value">${labRoom}</span>
+            </div>
+        `;
+  }
+
+  modal.classList.remove("hidden");
+  document.getElementById("historyFeedbackComment").focus();
+}
+
+function closeHistoryFeedbackModal() {
+  const modal = document.getElementById("historyFeedbackModal");
+  modal.classList.add("hidden");
+  document.getElementById("historyFeedbackForm").reset();
+}
+
+// History Feedback submission
+const historyFeedbackForm = document.getElementById("historyFeedbackForm");
+if (historyFeedbackForm) {
+  historyFeedbackForm.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const comment = document
+      .getElementById("historyFeedbackComment")
+      .value.trim();
+    const recordId = document.getElementById("feedbackRecordId").value;
+
+    if (!comment) {
+      showErrorModal(
+        "Empty Message",
+        "Please enter a message before submitting.",
+      );
+      return;
+    }
+
+    showLoading(true);
+    try {
+      const response = await fetch("/api/feedbacks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: currentUser.id,
+          comment,
+          sit_in_record_id: recordId,
+        }),
+      });
+
+      if (response.ok) {
+        showSuccessModal(
+          "Feedback Submitted",
+          "Thank you! Your session feedback has been received.",
+        );
+        closeHistoryFeedbackModal();
+      } else {
+        const error = await response.json();
+        showErrorModal(
+          "Submission Failed",
+          error.error || "Failed to submit feedback",
+        );
+      }
+    } catch (error) {
+      console.error("Error submitting history feedback:", error);
+      showErrorModal(
+        "Error",
+        "An unexpected error occurred. Please try again.",
+      );
+    }
+    showLoading(false);
+  });
 }
 
 function showCheckInSuccessModal(student, labRoom, purpose) {
