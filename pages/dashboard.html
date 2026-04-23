@@ -614,62 +614,106 @@
         </div>
 
         <!-- Student Reservation View -->
-        <div id="studentReservationView" class="reservation-container animate__animated animate__fadeInUp">
-          <div class="reservation-form-card">
-            <h3>Reserve a Laboratory Session</h3>
-            <form id="reservationForm">
-              <div class="form-group">
-                <label for="resLabRoom">Laboratory Room</label>
-                <select id="resLabRoom" required>
-                  <option value="">Select Laboratory</option>
-                  <option value="Lab 1">Laboratory 524</option>
-                  <option value="Lab 2">Laboratory 526</option>
-                  <option value="Lab 3">Laboratory 528</option>
-                  <option value="Lab 4">Laboratory 530</option>
-                  <option value="Lab 5">Laboratory 544</option>
-                  <option value="Lab 5">Laboratory 542</option>
-                </select>
+        <div id="studentReservationView" class="student-res-modern-container animate__animated animate__fadeIn">
+          <div class="res-modern-header">
+            <div class="header-text">
+              <h3><i class="fas fa-calendar-plus"></i> Lab Reservation Portal</h3>
+              <p>Secure your spot in the laboratory with just a few clicks.</p>
+            </div>
+            <div class="header-stats">
+              <div class="mini-stat-badge">
+                <i class="fas fa-check-circle"></i>
+                <span>Guaranteed Slot</span>
               </div>
-
-              <div class="form-group">
-                <label for="resDate">Date</label>
-                <input type="date" id="resDate" required />
+              <div class="mini-stat-badge">
+                <i class="fas fa-bolt"></i>
+                <span>Instant Approval</span>
               </div>
-
-              <div class="form-group">
-                <label for="resTime">Time</label>
-                <input type="time" id="resTime" required />
-              </div>
-
-              <div class="form-group">
-                <label for="resPurpose">Purpose</label>
-                <select id="resPurpose" required>
-                  <option value="">Select Purpose</option>
-                  <option value="Coding">Coding/Programming</option>
-                  <option value="Research">Research</option>
-                  <option value="Assignment">Assignment</option>
-                  <option value="Project">Project Development</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-
-              <div class="form-actions">
-                <button type="submit" class="btn-primary">
-                  <i class="fas fa-save"></i> Reserve
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
 
-          <div class="reservation-info-card">
-            <h3>Reservation Guidelines</h3>
-            <ul>
-              <li>Reservations must be made at least 1 day in advance.</li>
-              <li>Each student is allowed 1 reservation per day.</li>
-              <li>Cancellation must be done at least 2 hours before the scheduled time.</li>
-              <li>Please arrive on time. Your slot will be given to others after 15 minutes.</li>
-              <li>Maximum of 3 hours per session.</li>
-            </ul>
+          <div class="res-modern-grid">
+            <!-- Left Column: Form -->
+            <div class="res-form-side">
+              <div class="glass-card res-form-card-premium">
+                <div class="card-gradient-header">
+                  <h4>New Reservation</h4>
+                </div>
+                <form id="reservationForm" class="modern-form">
+                  <div class="form-row-modern">
+                    <div class="form-group-modern">
+                      <label for="resLabRoom"><i class="fas fa-door-open"></i> Laboratory</label>
+                      <select id="resLabRoom" required>
+                        <option value="" disabled selected>Select Laboratory</option>
+                        <option value="Lab 524">Laboratory 524 (Rm 1)</option>
+                        <option value="Lab 526">Laboratory 526 (Rm 2)</option>
+                        <option value="Lab 528">Laboratory 528 (Rm 3)</option>
+                        <option value="Lab 530">Laboratory 530 (Rm 4)</option>
+                        <option value="Lab 544">Laboratory 544 (Rm 5)</option>
+                        <option value="Lab 542">Laboratory 542 (Rm 6)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="form-row-modern">
+                    <div class="form-group-modern">
+                      <label for="resDate"><i class="fas fa-calendar-day"></i> Preferred Date</label>
+                      <input type="date" id="resDate" required />
+                    </div>
+                    <div class="form-group-modern">
+                      <label for="resTime"><i class="fas fa-clock"></i> Start Time</label>
+                      <input type="time" id="resTime" required />
+                    </div>
+                  </div>
+
+                  <div class="form-group-modern">
+                    <label for="resPurpose"><i class="fas fa-pen-nib"></i> Purpose of Visit</label>
+                    <select id="resPurpose" required>
+                      <option value="" disabled selected>Choose Purpose</option>
+                      <option value="Coding">Coding/Programming</option>
+                      <option value="Research">Research & Study</option>
+                      <option value="Assignment">Assignment/Activity</option>
+                      <option value="Project">Project Development</option>
+                      <option value="Other">Other Academic Needs</option>
+                    </select>
+                  </div>
+
+                  <button type="submit" class="btn-primary-premium">
+                    <span>Confirm Reservation</span>
+                    <i class="fas fa-arrow-right"></i>
+                  </button>
+                </form>
+              </div>
+
+              <!-- Guidelines as tips -->
+              <div class="res-tips-container">
+                <div class="tip-item">
+                  <i class="fas fa-lightbulb"></i>
+                  <p>Book 24h in advance for guaranteed seat.</p>
+                </div>
+                <div class="tip-item">
+                  <i class="fas fa-user-clock"></i>
+                  <p>Show up 10 mins before your slot.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column: My Reservations -->
+            <div class="res-list-side">
+              <div class="glass-card res-history-card-premium">
+                <div class="card-header-flex">
+                  <h4><i class="fas fa-clipboard-list"></i> My Reservations</h4>
+                  <span class="status-count-badge" id="myResCount">0 Active</span>
+                </div>
+                <div class="premium-list-container" id="userReservationsList">
+                  <!-- Dynamic list of reservation cards -->
+                  <div class="empty-res-state">
+                    <img src="https://img.icons8.com/clouds/200/000000/calendar.png" alt="Empty" />
+                    <p>No reservations found. Start by booking a slot!</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

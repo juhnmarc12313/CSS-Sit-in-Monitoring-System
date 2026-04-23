@@ -571,6 +571,11 @@ function openSearchModal() {
   document.getElementById("modalSearchResults").innerHTML = "";
   document.getElementById("modalSearchInput").focus();
 
+  // Highlight Search link in admin nav (index 2)
+  if (currentUser && currentUser.role === "admin") {
+    activateAdminNavLink(2);
+  }
+
   // Add enter key listener
   document.getElementById("modalSearchInput").onkeypress = function (e) {
     if (e.key === "Enter") {
@@ -1544,15 +1549,16 @@ function showSection(sectionName) {
         document
           .getElementById("adminDashboardSection")
           .classList.remove("hidden");
+        activateAdminNavLink(1);
       } else {
         document.getElementById("dashboardSection").classList.remove("hidden");
+        activateNavLink(1);
       }
-      activateNavLink(1);
       break;
     case "search":
       if (userRole === "admin") {
         document.getElementById("searchSection").classList.remove("hidden");
-        activateAdminNavLink(1);
+        activateAdminNavLink(2);
       }
       break;
     case "student":
@@ -1561,13 +1567,13 @@ function showSection(sectionName) {
           .getElementById("studentMgmtSection")
           .classList.remove("hidden");
         loadAllStudents(); // Load students when section is shown
-        activateAdminNavLink(2);
+        activateAdminNavLink(3);
       }
       break;
     case "sitIn":
       if (userRole === "admin") {
         document.getElementById("sitInSection").classList.remove("hidden");
-        activateAdminNavLink(3);
+        activateAdminNavLink(4);
         loadActiveSitins(); // Load active sit-ins when section is shown
       }
       break;
@@ -1576,14 +1582,14 @@ function showSection(sectionName) {
         document
           .getElementById("viewRecordsSection")
           .classList.remove("hidden");
-        activateAdminNavLink(4);
+        activateAdminNavLink(5);
         loadAllRecords(); // Load records when section is shown
       }
       break;
     case "feedbacks":
       if (userRole === "admin") {
         document.getElementById("feedbacksSection").classList.remove("hidden");
-        activateAdminNavLink(5);
+        activateAdminNavLink(6);
         loadFeedbacks(); // Load feedbacks when section is shown
       }
       break;
@@ -1592,7 +1598,7 @@ function showSection(sectionName) {
         document
           .getElementById("sitinReportsSection")
           .classList.remove("hidden");
-        activateAdminNavLink(6);
+        activateAdminNavLink(7);
         loadSitInReports(); // Load sit-in reports when section is shown
       }
       break;
@@ -1604,7 +1610,7 @@ function showSection(sectionName) {
         document.getElementById("adminReservationView").style.display = "block";
         document.getElementById("studentReservationView").style.display =
           "none";
-        activateAdminNavLink(7);
+        activateAdminNavLink(8);
         switchReservationTab("computerControl"); // Default admin tab
       } else {
         document.getElementById("adminReservationView").style.display = "none";
@@ -1633,15 +1639,20 @@ function showSection(sectionName) {
 }
 
 function activateNavLink(index) {
-  const navLinks = document.querySelectorAll(".nav-link");
+  const studentNav = document.getElementById("studentNav");
+  if (!studentNav) return;
+  const navLinks = studentNav.querySelectorAll(".nav-link");
+  navLinks.forEach((link) => link.classList.remove("active"));
   if (navLinks[index]) {
     navLinks[index].classList.add("active");
   }
 }
 
 function activateAdminNavLink(index) {
-  // Get admin nav links (skip Home link which is index 0)
-  const adminNavLinks = document.querySelectorAll("#adminNav .nav-link");
+  const adminNav = document.getElementById("adminNav");
+  if (!adminNav) return;
+  const adminNavLinks = adminNav.querySelectorAll(".nav-link");
+  adminNavLinks.forEach((link) => link.classList.remove("active"));
   if (adminNavLinks[index]) {
     adminNavLinks[index].classList.add("active");
   }
@@ -2215,12 +2226,60 @@ async function loadUserReservations() {
     const response = await fetch(`/api/reservations/user/${currentUser.id}`);
     if (response.ok) {
       const reservations = await response.json();
-      // Could display these in a table or list for students
-      console.log("User reservations:", reservations);
+      displayUserReservations(reservations);
     }
   } catch (error) {
     console.error("Error loading user reservations:", error);
   }
+}
+
+function displayUserReservations(reservations) {
+  const listContainer = document.getElementById("userReservationsList");
+  const countBadge = document.getElementById("myResCount");
+  if (!listContainer) return;
+
+  if (!reservations || reservations.length === 0) {
+    listContainer.innerHTML = `
+      <div class="empty-res-state">
+        <img src="https://img.icons8.com/clouds/200/000000/calendar.png" alt="Empty" />
+        <p>No reservations found. Start by booking a slot!</p>
+      </div>
+    `;
+    if (countBadge) countBadge.textContent = "0 Active";
+    return;
+  }
+
+  const activeCount = reservations.filter((r) => r.status === "pending" || r.status === "approved").length;
+  if (countBadge) countBadge.textContent = `${activeCount} Active`;
+
+  listContainer.innerHTML = reservations
+    .map((r, index) => {
+      const delay = (index * 0.1).toFixed(2);
+      const statusClass = r.status.toLowerCase();
+      const labIcon = r.lab_room.includes("524") ? "1" : r.lab_room.includes("526") ? "2" : r.lab_room.includes("528") ? "3" : r.lab_room.includes("530") ? "4" : r.lab_room.includes("544") ? "5" : "6";
+      
+      return `
+        <div class="res-item-premium animate__animated animate__fadeInRight" style="animation-delay: ${delay}s">
+          <div class="res-item-info">
+            <div class="lab-icon-box">
+              <i class="fas fa-desktop"></i>
+            </div>
+            <div class="res-main-details">
+              <h5>${escapeHtml(r.lab_room)}</h5>
+              <div class="res-meta-data">
+                <span><i class="far fa-calendar-alt"></i> ${formatDate(r.date)}</span>
+                <span><i class="far fa-clock"></i> ${formatTime(r.time)}</span>
+              </div>
+            </div>
+          </div>
+          <div class="status-indicator">
+            <span class="status-pill ${statusClass}">${r.status}</span>
+            <span style="font-size: 10px; color: #94a3b8;">${escapeHtml(r.purpose)}</span>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
 }
 
 async function loadAdminReservations(filterStatus = null) {
@@ -2499,19 +2558,40 @@ async function updateNotificationOnServer(notificationId) {
   }
 }
 
-function markAllRead() {
-  notifications.forEach((n) => (n.read = true));
-  displayNotificationCount();
-  displayNotificationList();
-  displayAllNotifications();
+async function markAllRead() {
+  try {
+    const response = await fetch(
+      `/api/notifications/user/${currentUser.id}/read-all`,
+      {
+        method: "PUT",
+      },
+    );
+    if (response.ok) {
+      notifications.forEach((n) => (n.read = true));
+      displayNotificationCount();
+      displayNotificationList();
+      displayAllNotifications();
+    }
+  } catch (error) {
+    console.error("Error marking all as read:", error);
+  }
 }
 
-function clearAllNotifications() {
+async function clearAllNotifications() {
   if (confirm("Are you sure you want to clear all notifications?")) {
-    notifications = [];
-    displayNotificationCount();
-    displayNotificationList();
-    displayAllNotifications();
+    try {
+      const response = await fetch(`/api/notifications/user/${currentUser.id}`, {
+        method: "DELETE",
+      });
+      if (response.ok) {
+        notifications = [];
+        displayNotificationCount();
+        displayNotificationList();
+        displayAllNotifications();
+      }
+    } catch (error) {
+      console.error("Error clearing notifications:", error);
+    }
   }
 }
 
@@ -2904,6 +2984,7 @@ function setupEventListeners() {
         if (response.ok) {
           showSuccessModal("Success", "Reservation request submitted!");
           resForm.reset();
+          loadUserReservations(); // Refresh the list
         }
       } catch (error) {
         console.error("Error submitting reservation:", error);

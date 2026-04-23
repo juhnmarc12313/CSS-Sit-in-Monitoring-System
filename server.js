@@ -212,6 +212,22 @@ function initializeDatabase() {
             if (err) console.error('Error creating reservations table:', err.message);
             else console.log('Reservations table created/verified');
         });
+
+        // Notifications Table
+        db.run(`
+            CREATE TABLE IF NOT EXISTS notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                title TEXT NOT NULL,
+                message TEXT NOT NULL,
+                is_read BOOLEAN DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `, (err) => {
+            if (err) console.error('Error creating notifications table:', err.message);
+            else console.log('Notifications table created/verified');
+        });
     });
 }
 
@@ -679,12 +695,80 @@ app.put('/api/admin/reservations/:id/status', (req, res) => {
         return res.status(400).json({ error: 'Invalid status' });
     }
 
-    const query = `UPDATE reservations SET status = ? WHERE id = ?`;
-    db.run(query, [status, id], function (err) {
-        if (err) {
-            return res.status(500).json({ error: 'Failed to update reservation: ' + err.message });
+    // Get reservation details first to notify user
+    db.get(`SELECT user_id, lab_room, date, time FROM reservations WHERE id = ?`, [id], (err, reservation) => {
+        if (err || !reservation) {
+            return res.status(404).json({ error: 'Reservation not found' });
         }
-        res.json({ message: 'Reservation status updated' });
+
+        const query = `UPDATE reservations SET status = ? WHERE id = ?`;
+        db.run(query, [status, id], function (err) {
+            if (err) {
+                return res.status(500).json({ error: 'Failed to update reservation: ' + err.message });
+            }
+            
+            // Create notification for the user
+            const title = `Reservation ${status.charAt(0).toUpperCase() + status.slice(1)}`;
+            const message = `Your reservation for ${reservation.lab_room} on ${reservation.date} at ${reservation.time} has been ${status}.`;
+            
+            db.run(`INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)`, 
+                [reservation.user_id, title, message]);
+
+            res.json({ message: 'Reservation status updated and user notified' });
+        });
+    });
+});
+
+// =============================================
+// Notifications API
+// =============================================
+
+// Get notifications for a user
+app.get('/api/notifications/:user_id', (req, res) => {
+    const { user_id } = req.params;
+    const query = `SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50`;
+    
+    db.all(query, [user_id], (err, notifications) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to fetch notifications: ' + err.message });
+        }
+        res.json(notifications.map(n => ({
+            ...n,
+            read: !!n.is_read // Map is_read to read for frontend compatibility
+        })));
+    });
+});
+
+// Mark notification as read
+app.put('/api/notifications/:id/read', (req, res) => {
+    const { id } = req.params;
+    db.run(`UPDATE notifications SET is_read = 1 WHERE id = ?`, [id], (err) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to update notification: ' + err.message });
+        }
+        res.json({ message: 'Notification marked as read' });
+    });
+});
+
+// Mark all notifications as read for a user
+app.put('/api/notifications/user/:user_id/read-all', (req, res) => {
+    const { user_id } = req.params;
+    db.run(`UPDATE notifications SET is_read = 1 WHERE user_id = ?`, [user_id], (err) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to update notifications: ' + err.message });
+        }
+        res.json({ message: 'All notifications marked as read' });
+    });
+});
+
+// Delete all notifications for a user
+app.delete('/api/notifications/user/:user_id', (req, res) => {
+    const { user_id } = req.params;
+    db.run(`DELETE FROM notifications WHERE user_id = ?`, [user_id], (err) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to delete notifications: ' + err.message });
+        }
+        res.json({ message: 'All notifications deleted' });
     });
 });
 
