@@ -7,6 +7,7 @@ let currentUser = null;
 let sessionToken = null;
 let allHistoryData = [];
 let notifications = [];
+let knownNotificationIds = new Set();
 
 // =============================================
 // Initialization
@@ -72,6 +73,11 @@ function initializeDashboard() {
     loadSitInHistory();
     loadNotifications();
     loadAnnouncements();
+
+    // Poll for notifications every 10 seconds for students
+    setInterval(() => {
+      loadNotifications();
+    }, 10000);
   }
 
   // Setup event listeners
@@ -2433,7 +2439,24 @@ async function loadNotifications() {
     const response = await fetch(`/api/notifications/${currentUser.id}`);
 
     if (response.ok) {
-      notifications = await response.json();
+      const fetchedNotifications = await response.json();
+
+      // Check for new unread notifications
+      fetchedNotifications.forEach((n) => {
+        if (!knownNotificationIds.has(n.id)) {
+          // If it's not the first load and it's unread, notify the user
+          if (knownNotificationIds.size > 0 && !n.read) {
+            showSuccessModal(n.title, n.message);
+            // If the session ended, refresh history and sessions count
+            if (n.title === "Session Ended") {
+              loadSitInHistory();
+            }
+          }
+          knownNotificationIds.add(n.id);
+        }
+      });
+
+      notifications = fetchedNotifications;
       displayNotificationCount();
       displayNotificationList();
     } else {

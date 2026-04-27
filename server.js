@@ -527,7 +527,7 @@ app.post('/api/sitin/checkout', (req, res) => {
     }
 
     // First, find the user associated with this record to decrement their sessions
-    const findUserQuery = `SELECT user_id FROM sit_in_records WHERE id = ?`;
+    const findUserQuery = `SELECT user_id, lab_room FROM sit_in_records WHERE id = ?`;
 
     db.get(findUserQuery, [record_id], (err, record) => {
         if (err || !record) {
@@ -535,6 +535,7 @@ app.post('/api/sitin/checkout', (req, res) => {
         }
 
         const userId = record.user_id;
+        const labRoom = record.lab_room;
 
         // Start transaction-like serialize to ensure atomic updates
         db.serialize(() => {
@@ -551,6 +552,16 @@ app.post('/api/sitin/checkout', (req, res) => {
                     if (err) {
                         console.error('Failed to decrement sessions:', err.message);
                     }
+                    
+                    // 3. Create notification for the user
+                    const title = 'Session Ended';
+                    const message = `Your sit-in session in ${labRoom || 'the lab'} has been ended by the administrator.`;
+                    
+                    db.run(`INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)`, 
+                        [userId, title, message], (notifErr) => {
+                            if (notifErr) console.error('Error creating checkout notification:', notifErr.message);
+                        });
+
                     res.json({ message: 'Check-out successful and session decremented' });
                 });
             });
