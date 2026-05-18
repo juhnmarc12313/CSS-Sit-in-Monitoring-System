@@ -155,6 +155,7 @@ function initializeDatabase() {
                 user_id INTEGER NOT NULL,
                 lab_room TEXT,
                 purpose TEXT,
+                pc_number INTEGER,
                 time_in DATETIME DEFAULT CURRENT_TIMESTAMP,
                 time_out DATETIME,
                 date DATE DEFAULT (date('now')),
@@ -165,6 +166,10 @@ function initializeDatabase() {
                 console.error('Error creating sit_in_records table:', err.message);
             } else {
                 console.log('Sit-in records table created/verified');
+                // Ensure pc_number column exists for sit_in_records
+                db.run(`ALTER TABLE sit_in_records ADD COLUMN pc_number INTEGER`, (alterErr) => {
+                    // Ignore error if column already exists
+                });
             }
         });
 
@@ -204,13 +209,20 @@ function initializeDatabase() {
                 date DATE NOT NULL,
                 time TIME NOT NULL,
                 purpose TEXT NOT NULL,
+                pc_number INTEGER,
                 status TEXT DEFAULT 'pending',
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         `, (err) => {
             if (err) console.error('Error creating reservations table:', err.message);
-            else console.log('Reservations table created/verified');
+            else {
+                console.log('Reservations table created/verified');
+                // Ensure pc_number column exists for reservations
+                db.run(`ALTER TABLE reservations ADD COLUMN pc_number INTEGER`, (alterErr) => {
+                    // Ignore error if column already exists
+                });
+            }
         });
 
         // Notifications Table
@@ -227,6 +239,84 @@ function initializeDatabase() {
         `, (err) => {
             if (err) console.error('Error creating notifications table:', err.message);
             else console.log('Notifications table created/verified');
+        });
+
+        // Lab Software Table
+        db.run(`
+            CREATE TABLE IF NOT EXISTS lab_software (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                lab_room TEXT NOT NULL,
+                software_name TEXT NOT NULL,
+                software_version TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `, (err) => {
+            if (err) console.error('Error creating lab_software table:', err.message);
+            else {
+                console.log('Lab software table created/verified');
+                // Seed default lab software if table is empty
+                db.get(`SELECT COUNT(*) as count FROM lab_software`, [], (err, row) => {
+                    if (!err && row.count === 0) {
+                        const defaultSoftware = [
+                            { lab: 'Lab 524', name: 'Visual Studio Code', ver: '1.87.0' },
+                            { lab: 'Lab 524', name: 'Node.js', ver: '20.11.0' },
+                            { lab: 'Lab 524', name: 'Python', ver: '3.12.1' },
+                            { lab: 'Lab 524', name: 'Java JDK', ver: '21.0.2' },
+
+                            { lab: 'Lab 526', name: 'C++ Compiler', ver: 'GCC 13.2' },
+                            { lab: 'Lab 526', name: 'Eclipse IDE', ver: '2023-12' },
+                            { lab: 'Lab 526', name: 'Visual Studio Code', ver: '1.87.0' },
+                            { lab: 'Lab 526', name: 'Git', ver: '2.43.0' },
+
+                            { lab: 'Lab 528', name: 'Android Studio', ver: '2023.1.1' },
+                            { lab: 'Lab 528', name: 'IntelliJ IDEA', ver: '2023.3.2' },
+                            { lab: 'Lab 528', name: 'WebStorm', ver: '2023.3.2' },
+                            { lab: 'Lab 528', name: 'Node.js', ver: '20.11.0' },
+
+                            { lab: 'Lab 530', name: 'Adobe Photoshop', ver: '2024' },
+                            { lab: 'Lab 530', name: 'Adobe Premiere Pro', ver: '2024' },
+                            { lab: 'Lab 530', name: 'Adobe Illustrator', ver: '2024' },
+                            { lab: 'Lab 530', name: 'Blender', ver: '4.0.2' },
+
+                            { lab: 'Lab 544', name: 'MySQL Workbench', ver: '8.0.36' },
+                            { lab: 'Lab 544', name: 'Microsoft SQL Server', ver: '2022' },
+                            { lab: 'Lab 544', name: 'Python', ver: '3.12.1' },
+                            { lab: 'Lab 544', name: 'pgAdmin 4', ver: '8.2' },
+
+                            { lab: 'Lab 542', name: 'Unity Hub', ver: '3.7.0' },
+                            { lab: 'Lab 542', name: 'Unreal Engine', ver: '5.3.2' },
+                            { lab: 'Lab 542', name: 'Blender', ver: '4.0.2' },
+                            { lab: 'Lab 542', name: 'Audacity', ver: '3.4.2' }
+                        ];
+                        
+                        const insertStmt = db.prepare(`INSERT INTO lab_software (lab_room, software_name, software_version) VALUES (?, ?, ?)`);
+                        defaultSoftware.forEach(s => {
+                            insertStmt.run(s.lab, s.name, s.ver);
+                        });
+                        insertStmt.finalize();
+                        console.log('Seeded default lab software');
+                    }
+                });
+            }
+        });
+
+        // System Settings Table
+        db.run(`
+            CREATE TABLE IF NOT EXISTS system_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+        `, (err) => {
+            if (err) console.error('Error creating system_settings table:', err.message);
+            else {
+                console.log('System settings table created/verified');
+                // Seed default settings if empty
+                db.get(`SELECT COUNT(*) as count FROM system_settings WHERE key = 'reservations_enabled'`, [], (err, row) => {
+                    if (!err && (!row || row.count === 0)) {
+                        db.run(`INSERT INTO system_settings (key, value) VALUES ('reservations_enabled', 'true')`);
+                    }
+                });
+            }
         });
     });
 }
@@ -410,7 +500,7 @@ app.get('/api/session/validate', (req, res) => {
     // Find the session
     const sessionQuery = `
         SELECT s.*, u.id as user_id, u.id_number, u.last_name, u.first_name, u.middle_name, 
-               u.course_level, u.course, u.address, u.email, u.profile_picture, u.role
+               u.course_level, u.course, u.address, u.email, u.profile_picture, u.role, u.remaining_sessions
         FROM sessions s
         JOIN users u ON s.user_id = u.id
         WHERE s.session_token = ? AND s.logout_time IS NULL
@@ -438,7 +528,8 @@ app.get('/api/session/validate', (req, res) => {
                 course_level: session.course_level,
                 address: session.address,
                 profile_picture: session.profile_picture,
-                role: session.role || 'student'
+                role: session.role || 'student',
+                remaining_sessions: session.remaining_sessions
             }
         });
     });
@@ -502,15 +593,15 @@ app.post('/api/user/:id/profile-picture', upload.single('profilePicture'), (req,
 
 // Sit-in check-in endpoint
 app.post('/api/sitin/checkin', (req, res) => {
-    const { user_id, lab_room, purpose } = req.body;
+    const { user_id, lab_room, purpose, pc_number } = req.body;
 
     if (!user_id) {
         return res.status(400).json({ error: 'User ID is required' });
     }
 
-    const query = `INSERT INTO sit_in_records (user_id, lab_room, purpose) VALUES (?, ?, ?)`;
+    const query = `INSERT INTO sit_in_records (user_id, lab_room, purpose, pc_number) VALUES (?, ?, ?, ?)`;
 
-    db.run(query, [user_id, lab_room, purpose], function (err) {
+    db.run(query, [user_id, lab_room, purpose, pc_number || null], function (err) {
         if (err) {
             return res.status(500).json({ error: 'Check-in failed: ' + err.message });
         }
@@ -652,18 +743,113 @@ app.get('/api/feedbacks/user/:user_id', (req, res) => {
 
 // Submit reservation request (student)
 app.post('/api/reservations', (req, res) => {
-    const { user_id, lab_room, date, time, purpose } = req.body;
+    const { user_id, lab_room, date, time, purpose, pc_number } = req.body;
 
-    if (!user_id || !lab_room || !date || !time || !purpose) {
-        return res.status(400).json({ error: 'All fields are required' });
+    if (!user_id || !lab_room || !date || !time || !purpose || !pc_number) {
+        return res.status(400).json({ error: 'All fields including PC number are required' });
     }
 
-    const query = `INSERT INTO reservations (user_id, lab_room, date, time, purpose) VALUES (?, ?, ?, ?, ?)`;
-    db.run(query, [user_id, lab_room, date, time, purpose], function (err) {
-        if (err) {
-            return res.status(500).json({ error: 'Failed to submit reservation: ' + err.message });
+    // Check if reservations are enabled first
+    db.get(`SELECT value FROM system_settings WHERE key = 'reservations_enabled'`, [], (err, setting) => {
+        if (!err && setting && setting.value === 'false') {
+            return res.status(403).json({ error: 'The reservation system is currently disabled by the administrator.' });
         }
-        res.status(201).json({ message: 'Reservation request submitted', id: this.lastID });
+
+        // Check if PC is already booked/pending for this lab on this date
+        const checkQuery = `SELECT id FROM reservations WHERE lab_room = ? AND date = ? AND pc_number = ? AND status IN ('approved', 'pending')`;
+        db.get(checkQuery, [lab_room, date, pc_number], (checkErr, row) => {
+            if (checkErr) {
+                return res.status(500).json({ error: 'Database verification failed: ' + checkErr.message });
+            }
+            if (row) {
+                return res.status(409).json({ error: `PC-${pc_number} is already reserved in ${lab_room} on this date.` });
+            }
+
+            const query = `INSERT INTO reservations (user_id, lab_room, date, time, purpose, pc_number) VALUES (?, ?, ?, ?, ?, ?)`;
+            db.run(query, [user_id, lab_room, date, time, purpose, pc_number], function (err) {
+                if (err) {
+                    return res.status(500).json({ error: 'Failed to submit reservation: ' + err.message });
+                }
+                res.status(201).json({ message: 'Reservation request submitted', id: this.lastID });
+            });
+        });
+    });
+});
+
+// Get taken PCs for a laboratory at a specific date
+app.get('/api/reservations/taken', (req, res) => {
+    const { lab_room, date } = req.query;
+
+    if (!lab_room || !date) {
+        return res.status(400).json({ error: 'lab_room and date are required' });
+    }
+
+    // Find all approved or pending reservations for this lab and date
+    const query = `
+        SELECT pc_number FROM reservations 
+        WHERE lab_room = ? AND date = ? AND status IN ('approved', 'pending')
+    `;
+
+    db.all(query, [lab_room, date], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to fetch taken PCs: ' + err.message });
+        }
+        const takenPCs = rows.map(row => row.pc_number).filter(val => val !== null);
+        res.json({ takenPCs });
+    });
+});
+
+// =============================================
+// Lab Software API
+// =============================================
+
+// Get all software grouped by lab, or filtered by lab
+app.get('/api/software', (req, res) => {
+    const { lab_room } = req.query;
+    let query = `SELECT * FROM lab_software`;
+    const params = [];
+
+    if (lab_room) {
+        query += ` WHERE lab_room = ?`;
+        params.push(lab_room);
+    }
+    query += ` ORDER BY lab_room, software_name`;
+
+    db.all(query, params, (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to fetch software: ' + err.message });
+        }
+        res.json(rows);
+    });
+});
+
+// Add software to laboratory (admin only)
+app.post('/api/admin/software', (req, res) => {
+    const { lab_room, software_name, software_version } = req.body;
+
+    if (!lab_room || !software_name) {
+        return res.status(400).json({ error: 'lab_room and software_name are required' });
+    }
+
+    const query = `INSERT INTO lab_software (lab_room, software_name, software_version) VALUES (?, ?, ?)`;
+    db.run(query, [lab_room, software_name, software_version || ''], function (err) {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to add software: ' + err.message });
+        }
+        res.status(201).json({ message: 'Software added successfully', id: this.lastID });
+    });
+});
+
+// Delete software (admin only)
+app.delete('/api/admin/software/:id', (req, res) => {
+    const { id } = req.params;
+
+    const query = `DELETE FROM lab_software WHERE id = ?`;
+    db.run(query, [id], function (err) {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to delete software: ' + err.message });
+        }
+        res.json({ message: 'Software deleted successfully' });
     });
 });
 
@@ -677,6 +863,70 @@ app.get('/api/reservations/user/:user_id', (req, res) => {
             return res.status(500).json({ error: 'Failed to fetch reservations: ' + err.message });
         }
         res.json(reservations);
+    });
+});
+
+// Get system settings
+app.get('/api/settings', (req, res) => {
+    db.all(`SELECT key, value FROM system_settings`, [], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to fetch settings: ' + err.message });
+        }
+        const settings = {};
+        rows.forEach(row => {
+            settings[row.key] = row.value;
+        });
+        if (settings['reservations_enabled'] === undefined) {
+            settings['reservations_enabled'] = 'true';
+        }
+        res.json(settings);
+    });
+});
+
+// Update system setting
+app.post('/api/settings', (req, res) => {
+    const { key, value } = req.body;
+
+    if (!key || value === undefined) {
+        return res.status(400).json({ error: 'Key and value are required' });
+    }
+
+    const query = `INSERT INTO system_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`;
+    db.run(query, [key, String(value)], function (err) {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to save setting: ' + err.message });
+        }
+        res.json({ message: 'Setting saved successfully', key, value });
+    });
+});
+
+// Cancel reservation (student)
+app.delete('/api/reservations/:id', (req, res) => {
+    const { id } = req.params;
+
+    db.get(`SELECT user_id, status, lab_room, date, time FROM reservations WHERE id = ?`, [id], (err, reservation) => {
+        if (err || !reservation) {
+            return res.status(404).json({ error: 'Reservation not found' });
+        }
+
+        if (reservation.status !== 'pending' && reservation.status !== 'approved') {
+            return res.status(400).json({ error: 'Only pending or approved reservations can be cancelled' });
+        }
+
+        const query = `UPDATE reservations SET status = 'cancelled' WHERE id = ?`;
+        db.run(query, [id], function (err) {
+            if (err) {
+                return res.status(500).json({ error: 'Failed to cancel reservation: ' + err.message });
+            }
+
+            const title = `Reservation Cancelled`;
+            const message = `Your reservation for ${reservation.lab_room} on ${reservation.date} at ${reservation.time} was successfully cancelled.`;
+            
+            db.run(`INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)`, 
+                [reservation.user_id, title, message]);
+
+            res.json({ message: 'Reservation successfully cancelled' });
+        });
     });
 });
 
@@ -783,17 +1033,166 @@ app.delete('/api/notifications/user/:user_id', (req, res) => {
     });
 });
 
-// Get computer status (mock for now)
+// Get computer status (database-dependent)
 app.get('/api/admin/computer-status', (req, res) => {
-    // Mocking 10 PCs per lab
     const labs = ["Lab 524", "Lab 526", "Lab 528", "Lab 530", "Lab 544", "Lab 542"];
-    const status = labs.map(lab => ({
-        lab_name: lab,
-        total_pcs: 30,
-        available_pcs: Math.floor(Math.random() * 31),
-        active_sitins: Math.floor(Math.random() * 10)
-    }));
-    res.json(status);
+    const totalPcsPerLab = 49;
+
+    const query = `
+        SELECT lab_room, pc_number
+        FROM sit_in_records 
+        WHERE time_out IS NULL
+    `;
+
+    db.all(query, [], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to fetch database status: ' + err.message });
+        }
+
+        const occupiedSeatsByLab = {};
+        labs.forEach(lab => {
+            occupiedSeatsByLab[lab] = [];
+        });
+
+        rows.forEach(row => {
+            if (row.lab_room) {
+                // Handle different potential room names in DB (e.g. Lab 1/Lab 524)
+                const roomName = row.lab_room;
+                const normalizedRoom = roomName.startsWith('Lab ') && !isNaN(roomName.substring(4))
+                    ? roomName
+                    : (roomName === 'Lab 1' ? 'Lab 524'
+                      : roomName === 'Lab 2' ? 'Lab 526'
+                      : roomName === 'Lab 3' ? 'Lab 528'
+                      : roomName === 'Lab 4' ? 'Lab 530'
+                      : roomName === 'Lab 5' ? 'Lab 542'
+                      : roomName === 'Lab 6' ? 'Lab 544' : roomName);
+                
+                if (occupiedSeatsByLab[normalizedRoom] && row.pc_number) {
+                    occupiedSeatsByLab[normalizedRoom].push(row.pc_number);
+                }
+            }
+        });
+
+        const status = labs.map(lab => {
+            const occupiedSeats = occupiedSeatsByLab[lab] || [];
+            const active = occupiedSeats.length;
+            return {
+                lab_name: lab,
+                total_pcs: totalPcsPerLab,
+                available_pcs: Math.max(0, totalPcsPerLab - active),
+                active_sitins: active,
+                occupied_seats: occupiedSeats
+            };
+        });
+
+        res.json(status);
+    });
+});
+
+// Get laboratory and purpose analytics
+app.get('/api/admin/analytics', (req, res) => {
+    const labQuery = `
+        SELECT lab_room, COUNT(*) as count 
+        FROM sit_in_records 
+        WHERE lab_room IS NOT NULL AND lab_room != ''
+        GROUP BY lab_room
+    `;
+
+    const purposeQuery = `
+        SELECT purpose, COUNT(*) as count 
+        FROM sit_in_records 
+        WHERE purpose IS NOT NULL AND purpose != ''
+        GROUP BY purpose 
+        ORDER BY count DESC
+    `;
+
+    db.all(labQuery, [], (labErr, labRows) => {
+        if (labErr) {
+            return res.status(500).json({ error: 'Failed to fetch lab analytics: ' + labErr.message });
+        }
+
+        db.all(purposeQuery, [], (purposeErr, purposeRows) => {
+            if (purposeErr) {
+                return res.status(500).json({ error: 'Failed to fetch purpose analytics: ' + purposeErr.message });
+            }
+
+            // Normalize and group lab rooms in Javascript
+            const labCounts = {};
+            // Initialize all 6 labs to 0 check-ins so they always show up even if empty
+            const defaultLabs = ["Lab 524", "Lab 526", "Lab 528", "Lab 530", "Lab 542", "Lab 544"];
+            defaultLabs.forEach(l => {
+                labCounts[l] = 0;
+            });
+
+            labRows.forEach(row => {
+                const roomName = row.lab_room;
+                const normalizedRoom = roomName === 'Lab 1' ? 'Lab 524'
+                      : roomName === 'Lab 2' ? 'Lab 526'
+                      : roomName === 'Lab 3' ? 'Lab 528'
+                      : roomName === 'Lab 4' ? 'Lab 530'
+                      : roomName === 'Lab 5' ? 'Lab 542'
+                      : roomName === 'Lab 6' ? 'Lab 544' : roomName;
+                
+                labCounts[normalizedRoom] = (labCounts[normalizedRoom] || 0) + row.count;
+            });
+
+            // Convert back to sorted array
+            const formattedLabs = Object.keys(labCounts).map(key => ({
+                lab_room: key,
+                count: labCounts[key]
+            })).sort((a, b) => b.count - a.count);
+
+            res.json({
+                labs: formattedLabs,
+                purposes: purposeRows
+            });
+        });
+    });
+});
+
+// Get individual student sit-in summary
+app.get('/api/user/:userId/sit-in-summary', (req, res) => {
+    const { userId } = req.params;
+
+    const query = `
+        SELECT time_in, time_out 
+        FROM sit_in_records 
+        WHERE user_id = ? AND time_out IS NOT NULL
+    `;
+
+    db.all(query, [userId], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to fetch sit-in records: ' + err.message });
+        }
+
+        let totalSessions = rows.length;
+        let totalDurationMs = 0;
+        let longestSessionMs = 0;
+
+        rows.forEach(row => {
+            const timeIn = new Date(row.time_in);
+            const timeOut = new Date(row.time_out);
+            const durationMs = Math.max(0, timeOut - timeIn);
+
+            totalDurationMs += durationMs;
+            if (durationMs > longestSessionMs) {
+                longestSessionMs = durationMs;
+            }
+        });
+
+        const totalHours = (totalDurationMs / (1000 * 60 * 60)).toFixed(1);
+        const averageDurationMins = totalSessions > 0 
+            ? Math.round((totalDurationMs / (1000 * 60)) / totalSessions) 
+            : 0;
+        const longestDurationMins = Math.round(longestSessionMs / (1000 * 60));
+
+        res.json({
+            totalHours: parseFloat(totalHours),
+            totalSessions: totalSessions,
+            averageDurationMins: averageDurationMins,
+            longestDurationMins: longestDurationMins
+        });
+    });
 });
 
 // Update user profile
@@ -1273,12 +1672,13 @@ app.get('/api/announcements', (req, res) => {
     });
 });
 
-// Get all announcements including inactive (for admin)
+// Get all active announcements (for admin)
 app.get('/api/admin/announcements', (req, res) => {
     const query = `
         SELECT a.*, u.first_name as admin_first_name, u.last_name as admin_last_name
         FROM announcements a
         JOIN users u ON a.admin_id = u.id
+        WHERE a.is_active = 1
         ORDER BY a.created_at DESC
     `;
 

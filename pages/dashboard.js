@@ -74,6 +74,12 @@ function initializeDashboard() {
     loadNotifications();
     loadAnnouncements();
 
+    // Load default laboratory software directory
+    switchSoftwareLab('Lab 524');
+    
+    // Setup PC selection grid trigger listener
+    setupPCGridSelector();
+
     // Poll for notifications every 10 seconds for students
     setInterval(() => {
       loadNotifications();
@@ -100,9 +106,98 @@ async function loadAdminStats() {
         stats.todayReservations || 0;
       document.getElementById("totalFeedbacks").textContent =
         stats.totalFeedbacks || 0;
+      
+      // Load and display lab and purpose analytics
+      loadAdminAnalytics();
     }
   } catch (error) {
     console.error("Error loading admin stats:", error);
+  }
+}
+
+async function loadAdminAnalytics() {
+  try {
+    const response = await fetch("/api/admin/analytics");
+    if (response.ok) {
+      const data = await response.json();
+      displayAnalytics(data);
+    }
+  } catch (error) {
+    console.error("Error loading analytics:", error);
+  }
+}
+
+function displayAnalytics(data) {
+  const topLabNameEl = document.getElementById("analyticsTopLabName");
+  const topLabCountEl = document.getElementById("analyticsTopLabCount");
+  const labsListEl = document.getElementById("analyticsLabsList");
+
+  const topPurposeNameEl = document.getElementById("analyticsTopPurposeName");
+  const topPurposeCountEl = document.getElementById("analyticsTopPurposeCount");
+  const purposesListEl = document.getElementById("analyticsPurposesList");
+
+  // 1. Render Laboratory Analytics
+  if (data.labs && data.labs.length > 0) {
+    const topLab = data.labs[0];
+    if (topLabNameEl) topLabNameEl.textContent = topLab.lab_room;
+    if (topLabCountEl) topLabCountEl.textContent = topLab.count;
+
+    const maxCount = Math.max(...data.labs.map(l => l.count));
+
+    if (labsListEl) {
+      labsListEl.innerHTML = data.labs.map((lab, index) => {
+        const percent = maxCount > 0 ? Math.round((lab.count / maxCount) * 100) : 0;
+        return `
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: #475569;">
+              <span>${escapeHtml(lab.lab_room)}</span>
+              <span>${lab.count} check-ins</span>
+            </div>
+            <div style="background: #f1f5f9; height: 8px; border-radius: 4px; overflow: hidden; width: 100%;">
+              <div style="background: linear-gradient(90deg, #6366f1 0%, #4f46e5 100%); height: 100%; border-radius: 4px; width: ${percent}%; transition: width 0.5s ease-in-out;"></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+  } else {
+    if (topLabNameEl) topLabNameEl.textContent = "N/A";
+    if (topLabCountEl) topLabCountEl.textContent = "0";
+    if (labsListEl) {
+      labsListEl.innerHTML = `<p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 10px 0;">No laboratory data recorded yet.</p>`;
+    }
+  }
+
+  // 2. Render Purpose Analytics
+  if (data.purposes && data.purposes.length > 0) {
+    const topPurpose = data.purposes[0];
+    if (topPurposeNameEl) topPurposeNameEl.textContent = topPurpose.purpose;
+    if (topPurposeCountEl) topPurposeCountEl.textContent = topPurpose.count;
+
+    const maxCount = Math.max(...data.purposes.map(p => p.count));
+
+    if (purposesListEl) {
+      purposesListEl.innerHTML = data.purposes.map((purpose, index) => {
+        const percent = maxCount > 0 ? Math.round((purpose.count / maxCount) * 100) : 0;
+        return `
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: #475569;">
+              <span style="max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(purpose.purpose)}</span>
+              <span>${purpose.count} times</span>
+            </div>
+            <div style="background: #f1f5f9; height: 8px; border-radius: 4px; overflow: hidden; width: 100%;">
+              <div style="background: linear-gradient(90deg, #0ea5e9 0%, #0284c7 100%); height: 100%; border-radius: 4px; width: ${percent}%; transition: width 0.5s ease-in-out;"></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+  } else {
+    if (topPurposeNameEl) topPurposeNameEl.textContent = "N/A";
+    if (topPurposeCountEl) topPurposeCountEl.textContent = "0";
+    if (purposesListEl) {
+      purposesListEl.innerHTML = `<p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 10px 0;">No activity purpose data recorded yet.</p>`;
+    }
   }
 }
 
@@ -231,10 +326,13 @@ function displayRecords(records) {
     const labCounts = {};
 
     records.forEach((r) => {
-      if (r.time_out) {
-        const [inH, inM] = r.time_in.split(":").map(Number);
-        const [outH, outM] = r.time_out.split(":").map(Number);
-        totalMinutes += outH * 60 + outM - (inH * 60 + inM);
+      if (r.time_in && r.time_out) {
+        const timeIn = parseSQLiteDate(r.time_in);
+        const timeOut = parseSQLiteDate(r.time_out);
+        if (timeIn && timeOut) {
+          const durationMs = Math.max(0, timeOut - timeIn);
+          totalMinutes += Math.round(durationMs / (1000 * 60));
+        }
       }
       labCounts[r.lab_room] = (labCounts[r.lab_room] || 0) + 1;
     });
@@ -275,7 +373,7 @@ function displayRecords(records) {
                     </div>
                 </td>
                 <td><span class="id-text">${record.id_number}</span></td>
-                <td><span class="lab-badge">${record.lab_room}</span></td>
+                <td><span class="lab-badge">${record.lab_room}${record.pc_number ? ` (PC-${record.pc_number})` : ""}</span></td>
                 <td>
                     <div class="time-bundle">
                         <span class="in"><i class="far fa-clock"></i> ${record.time_in}</span>
@@ -319,9 +417,11 @@ function exportToCSV() {
 }
 
 function calculateDuration(timeIn, timeOut) {
-  const [inH, inM] = timeIn.split(":").map(Number);
-  const [outH, outM] = timeOut.split(":").map(Number);
-  const diffMinutes = outH * 60 + outM - (inH * 60 + inM);
+  if (!timeIn || !timeOut) return "N/A";
+  const dateIn = parseSQLiteDate(timeIn);
+  const dateOut = parseSQLiteDate(timeOut);
+  if (!dateIn || !dateOut) return "N/A";
+  const diffMinutes = Math.round(Math.max(0, dateOut - dateIn) / (1000 * 60));
   const hours = Math.floor(diffMinutes / 60);
   const minutes = diffMinutes % 60;
   return `${hours}h ${minutes}m`;
@@ -919,6 +1019,10 @@ function displayModalStudentInfo(student) {
                         <option value="Lab 542">Lab 544</option>
                     </select>
                 </div>
+                <div class="detail-item">
+                    <label for="modalPCNumber">PC Seat Number (1-49)</label>
+                    <input type="number" id="modalPCNumber" class="modal-dropdown" min="1" max="49" placeholder="Enter PC Number" required style="box-sizing: border-box; width: 100%; border: 1.5px solid #e2e8f0; font-size: 13px; font-weight: 500; height: 42px;" />
+                </div>
                 <div class="detail-item full-width">
                     <label for="modalPurpose">Purpose of Sit-in</label>
                     <select id="modalPurpose" class="modal-dropdown">
@@ -961,11 +1065,13 @@ async function checkInFromModal() {
 
   const labRoom = document.getElementById("modalLabRoom").value;
   const purpose = document.getElementById("modalPurpose").value;
+  const pcNumberVal = document.getElementById("modalPCNumber").value.trim();
+  const pcNumber = parseInt(pcNumberVal, 10);
 
-  if (!labRoom || !purpose) {
+  if (!labRoom || !purpose || isNaN(pcNumber) || pcNumber < 1 || pcNumber > 49) {
     showErrorModal(
-      "Missing Fields",
-      "Please select both Laboratory Room and Purpose.",
+      "Missing or Invalid Fields",
+      "Please select Laboratory Room, Purpose, and enter a valid PC number (1-49).",
     );
     return;
   }
@@ -978,12 +1084,13 @@ async function checkInFromModal() {
         user_id: student.id,
         lab_room: labRoom,
         purpose: purpose,
+        pc_number: pcNumber,
       }),
     });
 
     if (response.ok) {
       closeSearchModal();
-      showCheckInSuccessModal(student, labRoom, purpose);
+      showCheckInSuccessModal(student, labRoom, purpose, pcNumber);
 
       // Refresh stats if on admin dashboard
       if (typeof loadAdminStats === "function") loadAdminStats();
@@ -1027,9 +1134,11 @@ function redirectToSitInFormFromModal(student) {
     studentSessionInput.value = student.remaining_sessions || 0;
   }
 
-  // Clear lab room and purpose
+  // Clear lab room, purpose and pc number
   if (labRoomInput) labRoomInput.value = "";
   if (sitInPurposeInput) sitInPurposeInput.value = "";
+  const sitInPCNumberInput = sitInModal.querySelector("#sitInPCNumber");
+  if (sitInPCNumberInput) sitInPCNumberInput.value = "";
 
   // Open the sit-in modal
   openSitInModal();
@@ -1050,7 +1159,7 @@ function closeSitInModal() {
 }
 
 // Show check-in success modal
-function showCheckInSuccessModal(student, labRoom, purpose) {
+function showCheckInSuccessModal(student, labRoom, purpose, pcNumber = null) {
   const modalHtml = `
         <div id="checkInSuccessModal" class="modal">
             <div class="modal-content animate__animated animate__fadeInUp" style="max-width: 450px;">
@@ -1074,6 +1183,12 @@ function showCheckInSuccessModal(student, labRoom, purpose) {
                             <span style="color: #666; font-size: 14px;">Lab Room</span>
                             <span style="font-weight: 600; color: #333;">${escapeHtml(labRoom)}</span>
                         </div>
+                        ${pcNumber ? `
+                        <div style="display: flex; justify-content: space-between; background: white; padding: 12px 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                            <span style="color: #666; font-size: 14px;">PC Seat Number</span>
+                            <span style="font-weight: 600; color: #4f46e5;">PC-${pcNumber}</span>
+                        </div>
+                        ` : ""}
                         <div style="display: flex; justify-content: space-between; background: white; padding: 12px 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                             <span style="color: #666; font-size: 14px;">Purpose</span>
                             <span style="font-weight: 600; color: #333;">${escapeHtml(purpose)}</span>
@@ -1375,9 +1490,38 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+// Universal SQLite DATETIME string parser to avoid browser space parsing quirks
+function parseSQLiteDate(dateTimeStr) {
+  if (!dateTimeStr) return null;
+  let isoStr = dateTimeStr.trim();
+  if (isoStr.indexOf(' ') !== -1) {
+    isoStr = isoStr.replace(' ', 'T');
+  }
+  if (!isoStr.endsWith('Z') && isoStr.indexOf('T') !== -1) {
+    isoStr += 'Z';
+  }
+  const d = new Date(isoStr);
+  if (!isNaN(d.getTime())) {
+    return d;
+  }
+  const parts = dateTimeStr.split(/[- :]/);
+  if (parts.length >= 5) {
+    return new Date(Date.UTC(
+      parseInt(parts[0], 10),
+      parseInt(parts[1], 10) - 1,
+      parseInt(parts[2], 10),
+      parseInt(parts[3], 10),
+      parseInt(parts[4], 10),
+      parts[5] ? parseInt(parts[5], 10) : 0
+    ));
+  }
+  return new Date(dateTimeStr);
+}
+
 // Utility function to format date
 function formatDate(dateString) {
-  const date = new Date(dateString);
+  const date = parseSQLiteDate(dateString);
+  if (!date || isNaN(date.getTime())) return dateString || "";
   return date.toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
@@ -1452,6 +1596,29 @@ function displayUserInfo() {
 
   // Populate edit profile form
   populateEditForm();
+
+  // Fetch and update remaining sessions count directly from database
+  fetchLatestUserProfile();
+}
+
+async function fetchLatestUserProfile() {
+  if (!currentUser || currentUser.role === "admin") return;
+  try {
+    const response = await fetch(`/api/user/${currentUser.id}`);
+    if (response.ok) {
+      const dbUser = await response.json();
+      // Update our global currentUser object with the latest fields
+      currentUser.remaining_sessions = dbUser.remaining_sessions;
+      
+      // Update the UI card
+      const sessionsElement = document.getElementById("infoSessionsRemaining");
+      if (sessionsElement) {
+        sessionsElement.textContent = dbUser.remaining_sessions !== undefined ? dbUser.remaining_sessions : 30;
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching latest user profile:", error);
+  }
 }
 
 function updateProfilePictureDisplay() {
@@ -1612,6 +1779,9 @@ function showSection(sectionName) {
       const reservationSection = document.getElementById("reservationSection");
       reservationSection.classList.remove("hidden");
 
+      // Check reservation system status
+      checkReservationSystemStatus();
+
       if (userRole === "admin") {
         document.getElementById("adminReservationView").style.display = "block";
         document.getElementById("studentReservationView").style.display =
@@ -1640,6 +1810,11 @@ function showSection(sectionName) {
       document.getElementById("historySection").classList.remove("hidden");
       activateNavLink(5);
       displayFullHistory();
+      break;
+    case "sessions":
+      document.getElementById("sessionsSection").classList.remove("hidden");
+      activateNavLink(6);
+      loadSessionsPage();
       break;
   }
 }
@@ -1679,6 +1854,9 @@ async function loadSitInHistory() {
 
       // Update sessions remaining
       updateSessionsRemaining(allHistoryData);
+
+      // Update student dashboard analytics summary
+      loadStudentAnalyticsSummary();
     } else {
       console.error("Failed to load sit-in history");
     }
@@ -1689,18 +1867,31 @@ async function loadSitInHistory() {
   showLoading(false);
 }
 
+async function loadStudentAnalyticsSummary() {
+  try {
+    const response = await fetch(`/api/user/${currentUser.id}/sit-in-summary`);
+    if (response.ok) {
+      const summary = await response.json();
+      
+      const totalHoursEl = document.getElementById("summaryTotalHours");
+      const totalSessionsEl = document.getElementById("summaryTotalSessions");
+      const avgDurationEl = document.getElementById("summaryAvgDuration");
+      const longestSessionEl = document.getElementById("summaryLongestSession");
+
+      if (totalHoursEl) totalHoursEl.textContent = `${summary.totalHours.toFixed(1)}h`;
+      if (totalSessionsEl) totalSessionsEl.textContent = summary.totalSessions;
+      if (avgDurationEl) avgDurationEl.textContent = `${summary.averageDurationMins} mins`;
+      if (longestSessionEl) longestSessionEl.textContent = `${summary.longestDurationMins} mins`;
+    }
+  } catch (error) {
+    console.error("Error loading student analytics summary:", error);
+  }
+}
+
 function updateSessionsRemaining(records) {
-  if (!records || !records.length) return;
-
-  const totalSitins = records.length;
-
-  // Calculate remaining sessions (assuming 30 max sessions per semester)
-  const maxSessions = 30;
-  const sessionsRemaining = Math.max(0, maxSessions - totalSitins);
-
   const sessionsElement = document.getElementById("infoSessionsRemaining");
   if (sessionsElement) {
-    sessionsElement.textContent = sessionsRemaining;
+    sessionsElement.textContent = currentUser.remaining_sessions !== undefined ? currentUser.remaining_sessions : 30;
   }
 }
 
@@ -1728,9 +1919,12 @@ function updateHistoryStats(records) {
   let totalMinutes = 0;
   records.forEach((record) => {
     if (record.time_in && record.time_out) {
-      const [inH, inM] = record.time_in.split(":").map(Number);
-      const [outH, outM] = record.time_out.split(":").map(Number);
-      totalMinutes += outH * 60 + outM - (inH * 60 + inM);
+      const timeIn = parseSQLiteDate(record.time_in);
+      const timeOut = parseSQLiteDate(record.time_out);
+      if (timeIn && timeOut) {
+        const durationMs = Math.max(0, timeOut - timeIn);
+        totalMinutes += Math.round(durationMs / (1000 * 60));
+      }
     }
   });
   const hours = Math.floor(totalMinutes / 60);
@@ -2026,8 +2220,9 @@ function displayActiveSitins(records) {
                             <span>ID: ${escapeHtml(record.id_number)}</span>
                         </div>
                     </div>
-                    <div class="lab-indicator">
+                    <div class="lab-indicator" style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
                         <span class="lab-tag">${escapeHtml(record.lab_room)}</span>
+                        ${record.pc_number ? `<span class="pc-tag" style="background: #e0e7ff; color: #4f46e5; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">PC-${record.pc_number}</span>` : ""}
                     </div>
                 </div>
                 
@@ -2132,6 +2327,7 @@ function switchReservationTab(tabName) {
   if (tabName === "computerControl") loadComputerStatus();
   if (tabName === "requests") loadAdminReservations("pending");
   if (tabName === "logs") loadAdminReservations();
+  if (tabName === "softwareManage") loadAdminSoftwareList();
 }
 
 async function loadComputerStatus() {
@@ -2183,13 +2379,16 @@ function displayComputerStatus(labs) {
                 </div>
                 
                 <div class="lab-card-body">
-                    <div class="pc-visualization">
-                        <div class="pc-icon-grid">
-                            ${Array(12)
+                    <div class="pc-visualization" style="padding: 10px 15px;">
+                        <div class="pc-icon-grid" style="grid-template-columns: repeat(7, 1fr); gap: 4px;">
+                            ${Array(49)
           .fill(0)
           .map(
-            (_, i) =>
-              `<i class="fas fa-desktop pc-dot ${i < 12 - Math.round((lab.available_pcs / lab.total_pcs) * 12) ? "busy" : ""}"></i>`,
+            (_, i) => {
+              const seatNum = i + 1;
+              const isBusy = (lab.occupied_seats || []).includes(seatNum);
+              return `<i class="fas fa-desktop pc-dot ${isBusy ? "busy" : ""}" title="PC-${seatNum} ${isBusy ? "(Occupied)" : "(Available)"}" style="font-size: 8px;"></i>`;
+            }
           )
           .join("")}
                         </div>
@@ -2227,6 +2426,156 @@ function displayComputerStatus(labs) {
     .join("");
 }
 
+// Open visual seat grid layout of the laboratory (dynamic & database dependent)
+function viewLabDetails(labName) {
+  showLoading(true);
+
+  fetch("/api/admin/active-sitins")
+    .then(response => {
+      if (!response.ok) throw new Error("Failed to load active sessions");
+      return response.json();
+    })
+    .then(records => {
+      showLoading(false);
+      
+      // Filter records for this lab room with name normalization
+      const labRecords = records.filter(r => {
+        const roomName = r.lab_room || "";
+        const normalizedRoom = roomName.startsWith('Lab ') && !isNaN(roomName.substring(4))
+            ? roomName
+            : (roomName === 'Lab 1' ? 'Lab 524'
+              : roomName === 'Lab 2' ? 'Lab 526'
+              : roomName === 'Lab 3' ? 'Lab 528'
+              : roomName === 'Lab 4' ? 'Lab 530'
+              : roomName === 'Lab 5' ? 'Lab 542'
+              : roomName === 'Lab 6' ? 'Lab 544' : roomName);
+        return normalizedRoom.toLowerCase() === labName.toLowerCase();
+      });
+
+      // Map occupied seats (PC number -> student record)
+      const occupiedSeats = {};
+      labRecords.forEach(r => {
+        if (r.pc_number) {
+          occupiedSeats[r.pc_number] = r;
+        }
+      });
+
+      // Generate the modal overlay container
+      let modal = document.getElementById("labVisualDetailsModal");
+      if (!modal) {
+        modal = document.createElement("div");
+        modal.id = "labVisualDetailsModal";
+        modal.className = "modal";
+        document.body.appendChild(modal);
+      }
+
+      // Generate 7 rows x 7 seats grid (1 to 49)
+      let gridHtml = "";
+      for (let row = 1; row <= 7; row++) {
+        let rowHtml = `<div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 8px; flex-wrap: wrap;">`;
+        for (let col = 1; col <= 7; col++) {
+          const seatNum = (row - 1) * 7 + col;
+          const occupier = occupiedSeats[seatNum];
+          const statusColor = occupier ? "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)" : "linear-gradient(135deg, #10b981 0%, #047857 100%)";
+          const tooltip = occupier 
+            ? `Occupied by: ${occupier.first_name} ${occupier.last_name} (${occupier.id_number})\nStarted: ${formatTime(occupier.time_in)}`
+            : `PC Seat ${seatNum} (Available)`;
+          
+          rowHtml += `
+            <div class="visual-seat-node animate__animated animate__zoomIn" title="${escapeHtml(tooltip)}" style="
+              width: 44px;
+              height: 44px;
+              background: ${statusColor};
+              color: white;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              border-radius: 8px;
+              cursor: ${occupier ? "pointer" : "default"};
+              position: relative;
+              font-weight: 700;
+              font-size: 11px;
+              box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+              transition: all 0.2s;
+            "
+            ${occupier ? `onclick="showOccupierAlert('${escapeHtml(occupier.first_name)} ${escapeHtml(occupier.last_name)}', '${escapeHtml(occupier.id_number)}', '${formatTime(occupier.time_in)}', '${escapeHtml(occupier.purpose)}', ${seatNum})"` : ""}
+            >
+              <i class="fas fa-desktop" style="font-size: 14px; margin-bottom: 2px;"></i>
+              <span>${seatNum}</span>
+            </div>
+          `;
+        }
+        rowHtml += `</div>`;
+        gridHtml += rowHtml;
+      }
+
+      const activeCount = labRecords.length;
+      const vacantCount = 49 - activeCount;
+
+      modal.innerHTML = `
+        <div class="modal-content animate__animated animate__fadeInUp" style="max-width: 550px; padding: 25px; border-radius: 16px; border: none; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);">
+          <span class="modal-close" onclick="closeLabVisualModal()">&times;</span>
+          <h3 style="margin-top: 0; font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 8px; color: #1e1b4b; border-bottom: 1.5px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 15px;">
+            <i class="fas fa-laptop" style="color: #4f46e5;"></i> Live Lab Monitor: ${escapeHtml(labName)}
+          </h3>
+          <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">
+            Real-time seat layout. Hover/click occupied PC terminals (<span style="color: #ef4444; font-weight: 700;">Red</span>) to inspect active user sessions.
+          </p>
+
+          <!-- Lab status overview badges -->
+          <div style="display: flex; gap: 12px; margin-bottom: 25px;">
+            <div style="flex: 1; background: #fee2e2; color: #991b1b; padding: 12px; border-radius: 12px; text-align: center; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
+              <span style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Occupied Seats</span>
+              <span style="font-size: 22px; font-weight: 800;">${activeCount}</span>
+            </div>
+            <div style="flex: 1; background: #d1fae5; color: #065f46; padding: 12px; border-radius: 12px; text-align: center; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
+              <span style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Available Seats</span>
+              <span style="font-size: 22px; font-weight: 800;">${vacantCount}</span>
+            </div>
+          </div>
+
+          <!-- 7x7 PC Layout Grid -->
+          <div style="background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 14px; padding: 25px; margin-bottom: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
+            ${gridHtml}
+          </div>
+
+          <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+            <button class="btn-primary" style="width: 100%; padding: 14px; font-weight: 700; border-radius: 12px; background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%); color: white; border: none; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);" onclick="closeLabVisualModal()">
+              <i class="fas fa-times-circle"></i> Close View
+            </button>
+          </div>
+        </div>
+      `;
+
+      modal.classList.remove("hidden");
+    })
+    .catch(error => {
+      showLoading(false);
+      console.error(error);
+      showErrorModal("Error", "Could not load laboratory live layout.");
+    });
+}
+
+function closeLabVisualModal() {
+  const modal = document.getElementById("labVisualDetailsModal");
+  if (modal) {
+    modal.classList.add("hidden");
+  }
+}
+
+function showOccupierAlert(name, idNumber, timeIn, purpose, seatNum) {
+  showSuccessModal(
+    `Terminal PC-${seatNum} Session`,
+    `<div style="text-align: left; padding: 5px 0; font-size: 14px; line-height: 1.6; color: #475569;">
+      <p style="margin: 4px 0;"><i class="fas fa-user" style="color: #6366f1; width: 20px;"></i> <strong>Student:</strong> ${name}</p>
+      <p style="margin: 4px 0;"><i class="fas fa-id-card" style="color: #6366f1; width: 20px;"></i> <strong>ID Number:</strong> ${idNumber}</p>
+      <p style="margin: 4px 0;"><i class="fas fa-tag" style="color: #6366f1; width: 20px;"></i> <strong>Purpose:</strong> ${purpose}</p>
+      <p style="margin: 4px 0;"><i class="fas fa-clock" style="color: #6366f1; width: 20px;"></i> <strong>Started:</strong> ${timeIn}</p>
+     </div>`
+  );
+}
+
 async function loadUserReservations() {
   try {
     const response = await fetch(`/api/reservations/user/${currentUser.id}`);
@@ -2262,7 +2611,6 @@ function displayUserReservations(reservations) {
     .map((r, index) => {
       const delay = (index * 0.1).toFixed(2);
       const statusClass = r.status.toLowerCase();
-      const labIcon = r.lab_room.includes("524") ? "1" : r.lab_room.includes("526") ? "2" : r.lab_room.includes("528") ? "3" : r.lab_room.includes("530") ? "4" : r.lab_room.includes("544") ? "5" : "6";
       
       return `
         <div class="res-item-premium animate__animated animate__fadeInRight" style="animation-delay: ${delay}s">
@@ -2271,21 +2619,131 @@ function displayUserReservations(reservations) {
               <i class="fas fa-desktop"></i>
             </div>
             <div class="res-main-details">
-              <h5>${escapeHtml(r.lab_room)}</h5>
+              <h5>${escapeHtml(r.lab_room)} - Seat: PC-${r.pc_number || 'N/A'}</h5>
               <div class="res-meta-data">
                 <span><i class="far fa-calendar-alt"></i> ${formatDate(r.date)}</span>
                 <span><i class="far fa-clock"></i> ${formatTime(r.time)}</span>
               </div>
             </div>
           </div>
-          <div class="status-indicator">
+          <div class="status-indicator" style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
             <span class="status-pill ${statusClass}">${r.status}</span>
             <span style="font-size: 10px; color: #94a3b8;">${escapeHtml(r.purpose)}</span>
+            ${(r.status === 'pending' || r.status === 'approved') ? `
+              <button onclick="cancelReservation(${r.id})" class="btn-cancel-reservation" style="background: rgba(254, 242, 242, 0.95); border: 1px solid rgba(252, 165, 165, 0.5); color: #ef4444; cursor: pointer; font-size: 11px; font-weight: 700; display: flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; transition: all 0.2s; margin-top: 4px; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.05);" onmouseover="this.style.background='#ef4444'; this.style.color='#fff';" onmouseout="this.style.background='rgba(254, 242, 242, 0.95)'; this.style.color='#ef4444';">
+                <i class="fas fa-times-circle"></i> Cancel
+              </button>
+            ` : ''}
           </div>
         </div>
       `;
     })
     .join("");
+}
+
+// Unified reservation status settings checker
+async function checkReservationSystemStatus() {
+  try {
+    const response = await fetch("/api/settings");
+    if (response.ok) {
+      const settings = await response.json();
+      const enabled = settings.reservations_enabled !== "false";
+
+      const banner = document.getElementById("reservationDisabledBanner");
+      const form = document.getElementById("reservationForm");
+      const checkbox = document.getElementById("reservationSystemCheckbox");
+      const statusLabel = document.getElementById("resStatusLabel");
+      const toggleIcon = document.getElementById("resToggleIcon");
+
+      // Update student UI
+      if (banner && form) {
+        if (enabled) {
+          banner.style.display = "none";
+          form.style.display = "block";
+        } else {
+          banner.style.display = "block";
+          form.style.display = "none";
+        }
+      }
+
+      // Update admin UI
+      if (checkbox) {
+        checkbox.checked = enabled;
+      }
+      if (statusLabel) {
+        statusLabel.textContent = enabled ? "ENABLED" : "DISABLED";
+        statusLabel.style.color = enabled ? "#10b981" : "#ef4444";
+      }
+      if (toggleIcon) {
+        toggleIcon.className = enabled ? "fas fa-calendar-check" : "fas fa-calendar-times";
+        toggleIcon.style.color = enabled ? "#10b981" : "#ef4444";
+      }
+    }
+  } catch (error) {
+    console.error("Error checking reservation status:", error);
+  }
+}
+
+// Admin toggle function
+async function toggleReservationSystem(isChecked) {
+  try {
+    const response = await fetch("/api/settings", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        key: "reservations_enabled",
+        value: String(isChecked)
+      })
+    });
+
+    if (response.ok) {
+      const statusLabel = document.getElementById("resStatusLabel");
+      const toggleIcon = document.getElementById("resToggleIcon");
+      
+      if (statusLabel) {
+        statusLabel.textContent = isChecked ? "ENABLED" : "DISABLED";
+        statusLabel.style.color = isChecked ? "#10b981" : "#ef4444";
+      }
+      if (toggleIcon) {
+        toggleIcon.className = isChecked ? "fas fa-calendar-check" : "fas fa-calendar-times";
+        toggleIcon.style.color = isChecked ? "#10b981" : "#ef4444";
+      }
+
+      // Premium visual confirmation
+      alert(`Reservation system has been ${isChecked ? "ENABLED" : "DISABLED"} successfully!`);
+    } else {
+      alert("Failed to update reservation system status.");
+    }
+  } catch (error) {
+    console.error("Error toggling reservation system:", error);
+    alert("An error occurred. Please try again.");
+  }
+}
+
+// Student cancel reservation function
+async function cancelReservation(reservationId) {
+  if (!confirm("Are you sure you want to cancel this reservation?")) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/reservations/${reservationId}`, {
+      method: "DELETE"
+    });
+
+    if (response.ok) {
+      alert("Reservation cancelled successfully!");
+      loadUserReservations(); // Refresh list immediately
+    } else {
+      const err = await response.json();
+      alert(`Failed to cancel reservation: ${err.error || "Unknown error"}`);
+    }
+  } catch (error) {
+    console.error("Error cancelling reservation:", error);
+    alert("An error occurred. Please try again.");
+  }
 }
 
 async function loadAdminReservations(filterStatus = null) {
@@ -2359,6 +2817,10 @@ function displayReservationRequests(requests) {
                         <p><strong>${escapeHtml(r.lab_room)}</strong></p>
                     </div>
                     <div class="res-detail">
+                        <i class="fas fa-desktop"></i>
+                        <p>PC Seat: <strong>PC-${r.pc_number || 'N/A'}</strong></p>
+                    </div>
+                    <div class="res-detail">
                         <i class="far fa-calendar-alt"></i>
                         <p>${formatDate(r.date)} at ${formatTime(r.time)}</p>
                     </div>
@@ -2387,7 +2849,7 @@ function displayReservationLogs(logs) {
   if (!tbody) return;
 
   if (!logs || logs.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5">No reservation logs found</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6">No reservation logs found</td></tr>';
     return;
   }
 
@@ -2405,6 +2867,7 @@ function displayReservationLogs(logs) {
                     </div>
                 </td>
                 <td><span class="lab-badge">${l.lab_room}</span></td>
+                <td><span class="pc-badge" style="background: #e0e7ff; color: #4f46e5; font-weight: 700; padding: 4px 8px; border-radius: 6px;">PC-${l.pc_number || 'N/A'}</span></td>
                 <td><span class="status-badge ${l.status}">${l.status}</span></td>
             </tr>
         `;
@@ -2857,12 +3320,12 @@ function setupEventListeners() {
   const adminSitInForm = document.getElementById("adminSitInForm");
   if (adminSitInForm) {
     // Add listener to student ID to enable session editing when manually changed
-    const studentIdInput = document.getElementById("studentIdNumber");
+    const studentIdInput = document.getElementById("sitInStudentId");
     if (studentIdInput) {
       studentIdInput.addEventListener("input", function () {
-        document.getElementById("studentSession").readOnly = false;
-        document.getElementById("studentName").value = "";
-        document.getElementById("studentSession").value = "";
+        document.getElementById("sitInStudentSession").readOnly = false;
+        document.getElementById("sitInStudentName").value = "";
+        document.getElementById("sitInStudentSession").value = "";
       });
     }
 
@@ -2870,17 +3333,30 @@ function setupEventListeners() {
       e.preventDefault();
 
       const studentIdNumber = document
-        .getElementById("studentIdNumber")
+        .getElementById("sitInStudentId")
         .value.trim();
-      const studentName = document.getElementById("studentName").value.trim();
+      const studentName = document.getElementById("sitInStudentName").value.trim();
       const studentSession = document
-        .getElementById("studentSession")
+        .getElementById("sitInStudentSession")
         .value.trim();
-      const labRoom = document.getElementById("labRoom").value;
+      const labRoomVal = document.getElementById("labRoom").value;
       const purpose = document.getElementById("sitInPurpose").value;
+      const pcNumberVal = document.getElementById("sitInPCNumber").value.trim();
+      const pcNumber = parseInt(pcNumberVal, 10);
 
-      if (!studentIdNumber || !labRoom || !purpose) {
-        showErrorModal("Missing Fields", "Please fill in all fields");
+      // Map "Lab 1" / "Lab 2" to "Lab 524" etc. to keep formatting consistent
+      const labMap = {
+        "Lab 1": "Lab 524",
+        "Lab 2": "Lab 526",
+        "Lab 3": "Lab 528",
+        "Lab 4": "Lab 530",
+        "Lab 5": "Lab 542",
+        "Lab 6": "Lab 544"
+      };
+      const labRoom = labMap[labRoomVal] || labRoomVal;
+
+      if (!studentIdNumber || !labRoom || !purpose || isNaN(pcNumber) || pcNumber < 1 || pcNumber > 49) {
+        showErrorModal("Missing or Invalid Fields", "Please select Laboratory Room, Purpose, and enter a valid PC number (1-49).");
         return;
       }
 
@@ -2934,12 +3410,13 @@ function setupEventListeners() {
             user_id: student.id,
             lab_room: labRoom,
             purpose: purpose,
+            pc_number: pcNumber,
           }),
         });
 
         if (checkInResponse.ok) {
           const result = await checkInResponse.json();
-          showCheckInSuccessModal(student, labRoom, purpose);
+          showCheckInSuccessModal(student, labRoom, purpose, pcNumber);
 
           // Switch to Sit-in Management section to see the new record
           showSection("sitIn");
@@ -2990,12 +3467,26 @@ function setupEventListeners() {
   if (resForm) {
     resForm.addEventListener("submit", async function (e) {
       e.preventDefault();
+      
+      const pcNumber = document.getElementById("resPCNumber").value;
+      if (!pcNumber) {
+        alert("Please select a PC seat from the interactive grid or enter a valid number (1-49).");
+        return;
+      }
+
+      const parsedPc = parseInt(pcNumber, 10);
+      if (isNaN(parsedPc) || parsedPc < 1 || parsedPc > 49) {
+        alert("Please enter a valid PC number between 1 and 49.");
+        return;
+      }
+
       const formData = {
         user_id: currentUser.id,
         lab_room: document.getElementById("resLabRoom").value,
         date: document.getElementById("resDate").value,
         time: document.getElementById("resTime").value,
         purpose: document.getElementById("resPurpose").value,
+        pc_number: parsedPc,
       };
 
       try {
@@ -3007,7 +3498,13 @@ function setupEventListeners() {
         if (response.ok) {
           showSuccessModal("Success", "Reservation request submitted!");
           resForm.reset();
+          // Hide PC selector group and reset selection
+          document.getElementById("pcSelectorGroup").style.display = "none";
+          document.getElementById("resPCNumber").value = "";
           loadUserReservations(); // Refresh the list
+        } else {
+          const errData = await response.json();
+          alert(errData.error || "Failed to submit reservation.");
         }
       } catch (error) {
         console.error("Error submitting reservation:", error);
@@ -3098,13 +3595,15 @@ function displaySitInReports(records) {
   records.forEach((r) => {
     uniqueStudents.add(r.id_number);
 
-    if (r.time_out) {
-      const [inH, inM] = r.time_in.split(":").map(Number);
-      const [outH, outM] = r.time_out.split(":").map(Number);
-      const diff = outH * 60 + outM - (inH * 60 + inM);
-      if (diff > 0) {
-        totalMinutes += diff;
-        completedRecords++;
+    if (r.time_in && r.time_out) {
+      const timeIn = parseSQLiteDate(r.time_in);
+      const timeOut = parseSQLiteDate(r.time_out);
+      if (timeIn && timeOut) {
+        const diff = Math.round(Math.max(0, timeOut - timeIn) / (1000 * 60));
+        if (diff > 0) {
+          totalMinutes += diff;
+          completedRecords++;
+        }
       }
     }
 
@@ -3128,12 +3627,14 @@ function displaySitInReports(records) {
       };
     }
     studentStats[studentKey].sessions++;
-    if (r.time_out) {
-      const [inH, inM] = r.time_in.split(":").map(Number);
-      const [outH, outM] = r.time_out.split(":").map(Number);
-      const diff = outH * 60 + outM - (inH * 60 + inM);
-      if (diff > 0) {
-        studentStats[studentKey].minutes += diff;
+    if (r.time_in && r.time_out) {
+      const timeIn = parseSQLiteDate(r.time_in);
+      const timeOut = parseSQLiteDate(r.time_out);
+      if (timeIn && timeOut) {
+        const diff = Math.round(Math.max(0, timeOut - timeIn) / (1000 * 60));
+        if (diff > 0) {
+          studentStats[studentKey].minutes += diff;
+        }
       }
     }
   });
@@ -3401,7 +3902,8 @@ function exportSitInReportCSV() {
 // =============================================
 function formatDate(dateString) {
   if (!dateString) return "N/A";
-  const date = new Date(dateString);
+  const date = parseSQLiteDate(dateString);
+  if (!date || isNaN(date.getTime())) return dateString;
   return date.toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
@@ -3411,9 +3913,8 @@ function formatDate(dateString) {
 
 function formatTime(timeString) {
   if (!timeString) return "N/A";
-  // Handle both full datetime and time-only strings
-  if (timeString.includes("T") || timeString.includes(" ")) {
-    const date = new Date(timeString);
+  const date = parseSQLiteDate(timeString);
+  if (date && !isNaN(date.getTime())) {
     return date.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
@@ -3433,7 +3934,8 @@ function formatTime(timeString) {
 
 function formatDateTime(dateTimeString) {
   if (!dateTimeString) return "N/A";
-  const date = new Date(dateTimeString);
+  const date = parseSQLiteDate(dateTimeString);
+  if (!date || isNaN(date.getTime())) return dateTimeString;
   return date.toLocaleString("en-US", {
     year: "numeric",
     month: "short",
@@ -3614,4 +4116,425 @@ function redirectToSitInFormFromModal(student) {
 
   // Show modal
   modal.classList.remove("hidden");
+}
+
+// ============================================================================
+// Interactive PC Grid Selection & Software Registry Systems
+// ============================================================================
+
+function setupPCGridSelector() {
+  const labSelect = document.getElementById("resLabRoom");
+  const dateInput = document.getElementById("resDate");
+  const pcSelectorGroup = document.getElementById("pcSelectorGroup");
+  const pcInput = document.getElementById("resPCNumber");
+
+  if (!labSelect || !dateInput) return;
+
+  const onTriggerChange = async () => {
+    const selectedLab = labSelect.value;
+    const selectedDate = dateInput.value;
+
+    if (selectedLab && selectedDate) {
+      pcSelectorGroup.style.display = "block";
+      await fetchAndRenderPCGrid(selectedLab, selectedDate);
+    } else {
+      pcSelectorGroup.style.display = "none";
+    }
+  };
+
+  labSelect.addEventListener("change", onTriggerChange);
+  dateInput.addEventListener("change", onTriggerChange);
+
+  if (pcInput) {
+    pcInput.addEventListener("input", () => {
+      const val = parseInt(pcInput.value, 10);
+      const container = document.getElementById("pcRowLayoutContainer");
+      if (!container) return;
+
+      // Remove selected class from all PC buttons first
+      const allButtons = container.querySelectorAll(".pc-btn");
+      allButtons.forEach(b => b.classList.remove("selected"));
+
+      if (isNaN(val) || val < 1 || val > 49) {
+        return;
+      }
+
+      // Visually select the matching button if it is not taken
+      const targetBtn = container.querySelector(`.pc-btn[data-pc-number="${val}"]`);
+      if (targetBtn && !targetBtn.classList.contains("taken")) {
+        targetBtn.classList.add("selected");
+      }
+    });
+  }
+}
+
+async function fetchAndRenderPCGrid(labRoom, date) {
+  const container = document.getElementById("pcRowLayoutContainer");
+  if (!container) return;
+
+  container.innerHTML = '<div style="text-align: center; padding: 25px; grid-column: 1 / -1; color: #64748b;"><i class="fas fa-spinner fa-spin fa-lg"></i> Loading lab PC layout...</div>';
+
+  let takenPCs = [];
+  try {
+    const response = await fetch(`/api/reservations/taken?lab_room=${encodeURIComponent(labRoom)}&date=${encodeURIComponent(date)}`);
+    if (response.ok) {
+      const data = await response.json();
+      takenPCs = data.takenPCs || [];
+    }
+  } catch (error) {
+    console.error("Error fetching taken PCs:", error);
+  }
+
+  // Reset PC input selection display
+  document.getElementById("resPCNumber").value = "";
+
+  container.innerHTML = "";
+
+  const totalRows = 7;
+  const pcsPerRow = 7;
+
+  for (let r = 1; r <= totalRows; r++) {
+    const rowDiv = document.createElement("div");
+    rowDiv.className = "pc-row";
+
+    // Row label
+    const labelSpan = document.createElement("span");
+    labelSpan.className = "pc-row-label";
+    labelSpan.textContent = `Row ${r}`;
+    rowDiv.appendChild(labelSpan);
+
+    const buttonsContainer = document.createElement("div");
+    buttonsContainer.className = "pc-buttons-container";
+
+    for (let c = 1; c <= pcsPerRow; c++) {
+      const pcNum = (r - 1) * pcsPerRow + c;
+      const isTaken = takenPCs.includes(pcNum);
+
+      const pcBtn = document.createElement("button");
+      pcBtn.type = "button";
+      pcBtn.className = `pc-btn ${isTaken ? "taken" : ""}`;
+      pcBtn.dataset.pcNumber = pcNum;
+
+      pcBtn.innerHTML = `
+        <i class="fas fa-desktop"></i>
+        <span>PC-${pcNum}</span>
+      `;
+
+      if (!isTaken) {
+        pcBtn.addEventListener("click", () => {
+          const allButtons = container.querySelectorAll(".pc-btn");
+          allButtons.forEach(b => b.classList.remove("selected"));
+
+          pcBtn.classList.add("selected");
+          document.getElementById("resPCNumber").value = pcNum;
+        });
+      } else {
+        pcBtn.title = "This PC is already reserved for this session.";
+      }
+
+      buttonsContainer.appendChild(pcBtn);
+    }
+
+    rowDiv.appendChild(buttonsContainer);
+    container.appendChild(rowDiv);
+  }
+}
+
+async function switchSoftwareLab(labRoom) {
+  const buttons = document.querySelectorAll(".software-tab-btn");
+  buttons.forEach(btn => {
+    if (btn.textContent.trim() === labRoom) {
+      btn.classList.add("active");
+    } else {
+      btn.classList.remove("active");
+    }
+  });
+
+  const container = document.getElementById("softwareListContainer");
+  if (!container) return;
+
+  container.innerHTML = '<div style="text-align: center; padding: 30px; grid-column: span 2; color: #64748b;"><i class="fas fa-spinner fa-spin fa-2x"></i><p style="margin-top: 10px;">Loading software catalog...</p></div>';
+
+  try {
+    const response = await fetch(`/api/software?lab_room=${encodeURIComponent(labRoom)}`);
+    if (response.ok) {
+      const software = await response.json();
+      renderUserSoftwareList(software);
+    } else {
+      container.innerHTML = '<div style="text-align: center; padding: 30px; grid-column: span 2; color: #ef4444;"><i class="fas fa-exclamation-triangle fa-2x"></i><p style="margin-top: 10px;">Failed to load software.</p></div>';
+    }
+  } catch (error) {
+    console.error("Error loading software:", error);
+    container.innerHTML = '<div style="text-align: center; padding: 30px; grid-column: span 2; color: #ef4444;"><i class="fas fa-wifi fa-2x"></i><p style="margin-top: 10px;">Connection failed.</p></div>';
+  }
+}
+
+function renderUserSoftwareList(software) {
+  const container = document.getElementById("softwareListContainer");
+  if (!container) return;
+
+  if (!software || software.length === 0) {
+    container.innerHTML = '<div style="text-align: center; padding: 30px; grid-column: span 2; color: #94a3b8;"><i class="fas fa-cubes fa-2x"></i><p style="margin-top: 10px;">No software catalogs recorded in this laboratory room yet.</p></div>';
+    return;
+  }
+
+  container.innerHTML = software
+    .map(s => {
+      const sName = s.software_name.toLowerCase();
+      let iconClass = "fa-cube";
+      let bgStyle = "background: #eff6ff; color: #3b82f6;";
+
+      if (sName.includes("code") || sName.includes("studio")) {
+        iconClass = "fa-code";
+        bgStyle = "background: #f0fdf4; color: #15803d;";
+      } else if (sName.includes("python") || sName.includes("java") || sName.includes("c++") || sName.includes("compiler")) {
+        iconClass = "fa-laptop-code";
+        bgStyle = "background: #faf5ff; color: #7e22ce;";
+      } else if (sName.includes("adobe") || sName.includes("photoshop") || sName.includes("illustrator") || sName.includes("design")) {
+        iconClass = "fa-palette";
+        bgStyle = "background: #fff1f2; color: #be123c;";
+      } else if (sName.includes("unity") || sName.includes("unreal") || sName.includes("blender")) {
+        iconClass = "fa-gamepad";
+        bgStyle = "background: #fff7ed; color: #c2410c;";
+      } else if (sName.includes("sql") || sName.includes("database") || sName.includes("mysql")) {
+        iconClass = "fa-database";
+        bgStyle = "background: #ecfeff; color: #0e7490;";
+      }
+
+      return `
+        <div class="software-badge-item">
+          <div class="software-icon-wrapper" style="${bgStyle}">
+            <i class="fas ${iconClass}"></i>
+          </div>
+          <div class="software-details">
+            <h5>${escapeHtml(s.software_name)}</h5>
+            <span>${escapeHtml(s.software_version || "Latest Installed")}</span>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function openAddSoftwareModal() {
+  const modal = document.getElementById("addSoftwareModal");
+  if (modal) modal.classList.remove("hidden");
+}
+
+function closeAddSoftwareModal() {
+  const modal = document.getElementById("addSoftwareModal");
+  if (modal) {
+    modal.classList.add("hidden");
+    document.getElementById("addSoftwareForm").reset();
+  }
+}
+
+async function submitAddSoftware(e) {
+  e.preventDefault();
+  
+  const lab_room = document.getElementById("addSoftwareLabRoom").value;
+  const software_name = document.getElementById("addSoftwareName").value.trim();
+  const software_version = document.getElementById("addSoftwareVersion").value.trim();
+
+  if (!lab_room || !software_name) {
+    alert("Please fill all required fields.");
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/admin/software", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lab_room, software_name, software_version }),
+    });
+
+    if (response.ok) {
+      alert("Software catalog registered successfully!");
+      closeAddSoftwareModal();
+      loadAdminSoftwareList();
+    } else {
+      const data = await response.json();
+      alert(data.error || "Failed to register software.");
+    }
+  } catch (error) {
+    console.error("Error registering software:", error);
+    alert("Server error occurred. Please try again.");
+  }
+}
+
+async function loadAdminSoftwareList() {
+  const selectEl = document.getElementById("adminSoftwareLabSelect");
+  if (!selectEl) return;
+
+  const labRoom = selectEl.value;
+  const tbody = document.getElementById("adminSoftwareTableBody");
+  if (!tbody) return;
+
+  tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 25px; color: #64748b;"><i class="fas fa-spinner fa-spin"></i> Fetching laboratory catalogs...</td></tr>';
+
+  try {
+    const response = await fetch(`/api/software?lab_room=${encodeURIComponent(labRoom)}`);
+    if (response.ok) {
+      const software = await response.json();
+      renderAdminSoftwareTable(software);
+    } else {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #ef4444;">Failed to load software database entries.</td></tr>';
+    }
+  } catch (error) {
+    console.error("Error loading software list:", error);
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #ef4444;">Network connection error.</td></tr>';
+  }
+}
+
+function renderAdminSoftwareTable(software) {
+  const tbody = document.getElementById("adminSoftwareTableBody");
+  if (!tbody) return;
+
+  if (!software || software.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 25px; color: #94a3b8;"><i class="fas fa-cubes fa-lg"></i> No software catalogs recorded for this room yet.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = software
+    .map((s, index) => {
+      const delay = (index * 0.02).toFixed(2);
+      return `
+        <tr class="animate__animated animate__fadeIn" style="animation-delay: ${delay}s">
+          <td style="font-weight: 700; color: #1e293b; text-align: left; padding: 12px 15px;">${escapeHtml(s.software_name)}</td>
+          <td style="text-align: left; padding: 12px 15px;"><span style="font-size: 12px; font-weight: 600; color: #64748b; background: #e2e8f0; padding: 4px 10px; border-radius: 20px;">${escapeHtml(s.software_version || "Latest")}</span></td>
+          <td style="text-align: center; padding: 12px 15px;">
+            <button class="btn-action delete" onclick="deleteSoftware(${s.id}, '${escapeHtml(s.software_name)}', '${escapeHtml(s.lab_room)}')" title="Remove Software" style="padding: 6px 10px; border-radius: 8px;">
+              <i class="fas fa-trash-alt"></i> Delete
+            </button>
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+async function deleteSoftware(id, name, labRoom) {
+  if (!confirm(`Are you sure you want to remove ${name} from ${labRoom}?`)) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/admin/software/${id}`, {
+      method: "DELETE",
+    });
+
+    if (response.ok) {
+      alert("Software catalog entry successfully removed!");
+      loadAdminSoftwareList();
+    } else {
+      const data = await response.json();
+      alert(data.error || "Failed to remove entry.");
+    }
+  } catch (error) {
+    console.error("Error deleting software entry:", error);
+    alert("Connection error. Failed to delete entry.");
+  }
+}
+
+// =============================================
+// Sessions Section Controller & Helpers
+// =============================================
+async function loadSessionsPage() {
+  const tableBody = document.getElementById("sessionsTableBody");
+  const emptyState = document.getElementById("noSessionsMessage");
+
+  if (!tableBody) return;
+
+  showLoading(true);
+
+  try {
+    const response = await fetch(`/api/sitin/records/user/${currentUser.id}`);
+
+    if (response.ok) {
+      const data = await response.json();
+      const records = data.records || data;
+
+      if (!records || records.length === 0) {
+        tableBody.innerHTML = "";
+        emptyState.classList.remove("hidden");
+        showLoading(false);
+        return;
+      }
+
+      emptyState.classList.add("hidden");
+      tableBody.innerHTML = records
+        .map((record, index) => {
+          const duration = calculateDuration(record.time_in, record.time_out);
+          const delay = (index * 0.05).toFixed(2);
+          
+          // Determine status and badges
+          const statusText = record.time_out ? "Completed" : "Active";
+          const statusClass = record.time_out ? "status-approved" : "status-pending"; // Uses existing status CSS badges
+          
+          return `
+            <tr class="animate__animated animate__fadeInUp" style="animation-delay: ${delay}s; border-bottom: 1.5px solid #eaeaea;">
+              <td style="padding: 15px 12px; font-weight: 600; color: #5e3b71;">${formatDate(record.date)}</td>
+              <td style="padding: 15px 12px; color: #475569;">${formatTime(record.time_in)}</td>
+              <td style="padding: 15px 12px; color: #475569;">${record.time_out ? formatTime(record.time_out) : "-"}</td>
+              <td style="padding: 15px 12px; font-weight: 600; color: #6b21a8;">${duration}</td>
+              <td style="padding: 15px 12px;"><span class="status-badge" style="background: #f1f5f9; color: #475569; padding: 4px 8px; border-radius: 6px; font-weight: 700;">PC-${record.pc_number || "N/A"}</span></td>
+              <td style="padding: 15px 12px;"><span class="status-badge ${statusClass}">${statusText}</span></td>
+            </tr>
+          `;
+        })
+        .join("");
+    } else {
+      console.error("Failed to load sessions");
+    }
+  } catch (error) {
+    console.error("Error loading sessions:", error);
+  }
+
+  showLoading(false);
+}
+
+function formatTime(dateTimeStr) {
+  if (!dateTimeStr) return "-";
+  try {
+    const d = parseSQLiteDate(dateTimeStr);
+    if (!d || isNaN(d.getTime())) {
+      // Fallback if raw time is passed (e.g. split case)
+      return dateTimeStr;
+    }
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch (e) {
+    return dateTimeStr;
+  }
+}
+
+function exportSessionsToCSV() {
+  if (!allHistoryData || allHistoryData.length === 0) {
+    showToast("No sessions available to export", "error");
+    return;
+  }
+
+  let csvContent = "data:text/csv;charset=utf-8,";
+  csvContent += "Date,Time-In,Timeout,Duration,PC No.,Status\n";
+
+  allHistoryData.forEach((r) => {
+    const duration = calculateDuration(r.time_in, r.time_out);
+    const dateStr = formatDate(r.date);
+    const timeInStr = formatTime(r.time_in);
+    const timeOutStr = r.time_out ? formatTime(r.time_out) : "-";
+    const pcNo = r.pc_number || "N/A";
+    const status = r.time_out ? "Completed" : "Active";
+
+    csvContent += `"${dateStr}","${timeInStr}","${timeOutStr}","${duration}","PC-${pcNo}","${status}"\n`;
+  });
+
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute(
+    "download",
+    `my_sessions_${new Date().toISOString().split("T")[0]}.csv`,
+  );
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
