@@ -6,6 +6,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/style.css",
+      "destination": "/style.css"
+    },
+    {
       "source": "/dashboard.html",
       "destination": "/pages/dashboard.html"
     },
@@ -24,6 +28,22 @@
     {
       "source": "/Register.html",
       "destination": "/pages/Register.html"
+    },
+    {
+      "source": "/js/(.*)",
+      "destination": "/js/$1"
+    },
+    {
+      "source": "/image/(.*)",
+      "destination": "/image/$1"
+    },
+    {
+      "source": "/pages/(.*)",
+      "destination": "/pages/$1"
+    },
+    {
+      "source": "/public/(.*)",
+      "destination": "/public/$1"
     },
     {
       "source": "/api/(.*)",
