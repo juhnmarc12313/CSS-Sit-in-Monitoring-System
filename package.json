@@ -4,6 +4,8 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.3",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "multer": "^1.4.5-lts.1",
     "sqlite3": "^5.1.7"

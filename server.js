@@ -1,4 +1,6 @@
 const express = require('express');
+require('dotenv').config();
+const { createClient } = require('@libsql/client');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const crypto = require('crypto');
@@ -51,15 +53,116 @@ app.use('/uploads', express.static(uploadsDir));
 //Serve static
 app.use(express.static('public'));
 
-// Initialize SQLite Database
-const db = new sqlite3.Database('./database.db', (err) => {
-    if (err) {
-        console.error('Error opening database:', err.message);
-    } else {
-        console.log('Connected to SQLite database');
+// Initialize Database (Turso or local SQLite)
+let db;
+
+if (process.env.DATABASE_URL) {
+    console.log('Using Turso Database (libSQL):', process.env.DATABASE_URL);
+    const client = createClient({
+        url: process.env.DATABASE_URL,
+        authToken: process.env.DATABASE_AUTH_TOKEN
+    });
+
+    // SQLite3 Compatibility Layer for Turso/libSQL
+    db = {
+        run: function (sql, params, callback) {
+            if (typeof params === 'function') {
+                callback = params;
+                params = [];
+            }
+            if (!params) params = [];
+
+            client.execute({ sql, args: params })
+                .then(result => {
+                    if (callback) {
+                        const ctx = {
+                            lastID: result.lastInsertRowid !== undefined ? Number(result.lastInsertRowid) : null,
+                            changes: result.rowsAffected
+                        };
+                        callback.call(ctx, null);
+                    }
+                })
+                .catch(err => {
+                    const isDuplicateColumn = err.message && err.message.includes('duplicate column name');
+                    if (!isDuplicateColumn) {
+                        console.error('Turso run error:', err, 'SQL:', sql);
+                    }
+                    if (callback) callback(err);
+                });
+        },
+        get: function (sql, params, callback) {
+            if (typeof params === 'function') {
+                callback = params;
+                params = [];
+            }
+            if (!params) params = [];
+
+            client.execute({ sql, args: params })
+                .then(result => {
+                    if (callback) {
+                        callback(null, result.rows[0]);
+                    }
+                })
+                .catch(err => {
+                    console.error('Turso get error:', err, 'SQL:', sql);
+                    if (callback) callback(err);
+                });
+        },
+        all: function (sql, params, callback) {
+            if (typeof params === 'function') {
+                callback = params;
+                params = [];
+            }
+            if (!params) params = [];
+
+            client.execute({ sql, args: params })
+                .then(result => {
+                    if (callback) {
+                        callback(null, result.rows);
+                    }
+                })
+                .catch(err => {
+                    console.error('Turso all error:', err, 'SQL:', sql);
+                    if (callback) callback(err);
+                });
+        },
+        serialize: function (callback) {
+            callback();
+        },
+        prepare: function (sql) {
+            return {
+                run: function (...args) {
+                    let callback = null;
+                    let params = args;
+                    if (typeof args[args.length - 1] === 'function') {
+                        callback = args.pop();
+                        params = args;
+                    }
+                    db.run(sql, params, callback);
+                },
+                finalize: function (callback) {
+                    if (callback) callback();
+                }
+            };
+        }
+    };
+
+    // Trigger initialization with delay to let connection pool settle
+    setTimeout(() => {
         initializeDatabase();
-    }
-});
+    }, 100);
+
+} else {
+    console.log('Using local SQLite Database (database.db)');
+    db = new sqlite3.Database('./database.db', (err) => {
+        if (err) {
+            console.error('Error opening database:', err.message);
+        } else {
+            console.log('Connected to SQLite database');
+            initializeDatabase();
+        }
+    });
+}
 
 // =============================================
 // Database Schema Initialization
@@ -447,26 +550,27 @@ app.post('/api/login', (req, res) => {
         db.run(sessionQuery, [user.id, session_token, req.ip], (err) => {
             if (err) {
                 console.error('Session creation error:', err.message);
+                return res.status(500).json({ error: 'Session creation failed' });
             }
-        });
 
-        res.json({
-            message: 'Login successful',
-            user: {
-                id: user.id,
-                id_number: user.id_number,
-                name: `${user.first_name} ${user.last_name}`,
-                first_name: user.first_name,
-                last_name: user.last_name,
-                middle_name: user.middle_name,
-                email: user.email,
-                course: user.course,
-                course_level: user.course_level,
-                address: user.address,
-                profile_picture: user.profile_picture,
-                role: user.role || 'student'
-            },
-            session_token: session_token
+            res.json({
+                message: 'Login successful',
+                user: {
+                    id: user.id,
+                    id_number: user.id_number,
+                    name: `${user.first_name} ${user.last_name}`,
+                    first_name: user.first_name,
+                    last_name: user.last_name,
+                    middle_name: user.middle_name,
+                    email: user.email,
+                    course: user.course,
+                    course_level: user.course_level,
+                    address: user.address,
+                    profile_picture: user.profile_picture,
+                    role: user.role || 'student'
+                },
+                session_token: session_token
+            });
         });
     });
 });
@@ -1856,20 +1960,26 @@ app.get('/dashboard.html', (req, res) => {
 // Start Server
 // =============================================
 
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-});
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Server running on http://localhost:${PORT}`);
+    });
+}
 
 // Graceful shutdown
 process.on('SIGINT', () => {
-    db.close((err) => {
-        if (err) {
-            console.error('Error closing database:', err.message);
-        } else {
-            console.log('Database connection closed');
-        }
+    if (db && typeof db.close === 'function') {
+        db.close((err) => {
+            if (err) {
+                console.error('Error closing database:', err.message);
+            } else {
+                console.log('Database connection closed');
+            }
+            process.exit(0);
+        });
+    } else {
         process.exit(0);
-    });
+    }
 });
 
 module.exports = app;

@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/dashboard.html",
+      "destination": "/pages/dashboard.html"
+    },
+    {
+      "source": "/aboutus.html",
+      "destination": "/pages/aboutus.html"
+    },
+    {
+      "source": "/community.html",
+      "destination": "/pages/community.html"
+    },
+    {
+      "source": "/login.html",
+      "destination": "/pages/login.html"
+    },
+    {
+      "source": "/Register.html",
+      "destination": "/pages/Register.html"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.js"
+    }
+  ]
+}

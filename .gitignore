@@ -1,1 +1,7 @@
 /node_modules
+.env
+database.db
+/uploads
+.env.local
+.vercel
+/node_modules/
