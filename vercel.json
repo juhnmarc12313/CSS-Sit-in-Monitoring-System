@@ -1,52 +1,13 @@
 {
   "version": 2,
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "{style.css,index.html,pages/**,js/**,public/**}"
+    }
+  },
   "rewrites": [
     {
-      "source": "/",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/style.css",
-      "destination": "/style.css"
-    },
-    {
-      "source": "/dashboard.html",
-      "destination": "/pages/dashboard.html"
-    },
-    {
-      "source": "/aboutus.html",
-      "destination": "/pages/aboutus.html"
-    },
-    {
-      "source": "/community.html",
-      "destination": "/pages/community.html"
-    },
-    {
-      "source": "/login.html",
-      "destination": "/pages/login.html"
-    },
-    {
-      "source": "/Register.html",
-      "destination": "/pages/Register.html"
-    },
-    {
-      "source": "/js/(.*)",
-      "destination": "/js/$1"
-    },
-    {
-      "source": "/image/(.*)",
-      "destination": "/image/$1"
-    },
-    {
-      "source": "/pages/(.*)",
-      "destination": "/pages/$1"
-    },
-    {
-      "source": "/public/(.*)",
-      "destination": "/public/$1"
-    },
-    {
-      "source": "/api/(.*)",
+      "source": "/(.*)",
       "destination": "/api/index.js"
     }
   ]

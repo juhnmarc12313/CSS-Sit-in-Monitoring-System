@@ -51,7 +51,7 @@ app.use('/uploads', express.static(uploadsDir));
 
 
 //Serve static
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Initialize Database (Turso or local SQLite)
 let db;
