@@ -799,6 +799,68 @@ app.get('/api/sitin/records/user/:user_id', (req, res) => {
     });
 });
 
+// Get leaderboard data
+app.get('/api/leaderboard', (req, res) => {
+    const query = `
+        SELECT u.id, u.id_number, u.first_name, u.last_name, u.course, u.course_level, u.profile_picture,
+               sr.time_in, sr.time_out
+        FROM users u
+        LEFT JOIN sit_in_records sr ON u.id = sr.user_id AND sr.time_out IS NOT NULL
+        WHERE u.role = 'student' AND u.is_active = 1
+    `;
+
+    db.all(query, [], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to fetch leaderboard data: ' + err.message });
+        }
+
+        const studentMap = {};
+
+        rows.forEach(row => {
+            if (!studentMap[row.id]) {
+                studentMap[row.id] = {
+                    id: row.id,
+                    id_number: row.id_number,
+                    name: `${row.first_name} ${row.last_name}`,
+                    first_name: row.first_name,
+                    last_name: row.last_name,
+                    course: row.course,
+                    course_level: row.course_level,
+                    profile_picture: row.profile_picture,
+                    totalSessions: 0,
+                    totalDurationMs: 0
+                };
+            }
+
+            if (row.time_in && row.time_out) {
+                studentMap[row.id].totalSessions += 1;
+                const timeIn = new Date(row.time_in);
+                const timeOut = new Date(row.time_out);
+                const durationMs = Math.max(0, timeOut - timeIn);
+                studentMap[row.id].totalDurationMs += durationMs;
+            }
+        });
+
+        const leaderboard = Object.values(studentMap).map(student => {
+            const totalHours = (student.totalDurationMs / (1000 * 60 * 60)).toFixed(1);
+            return {
+                ...student,
+                totalHours: parseFloat(totalHours)
+            };
+        });
+
+        // Sort by totalSessions descending, then totalHours descending
+        leaderboard.sort((a, b) => {
+            if (b.totalSessions !== a.totalSessions) {
+                return b.totalSessions - a.totalSessions;
+            }
+            return b.totalHours - a.totalHours;
+        });
+
+        res.json(leaderboard.slice(0, 10)); // Top 10 students
+    });
+});
+
 // =============================================
 // Feedbacks API
 // =============================================

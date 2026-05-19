@@ -86,7 +86,50 @@
           </button>
         </div>
       </div>
+
+      <!-- Leaderboard Section -->
+      <div class="leaderboard-wrapper animate__animated animate__fadeInUp">
+        <div class="leaderboard-header">
+          <div class="leaderboard-title-box">
+            <i class="fas fa-trophy trophy-icon"></i>
+            <h2>CCS Top Sit-in Scholars</h2>
+          </div>
+          <p class="leaderboard-subtitle">Celebrating our most dedicated students in the laboratory</p>
+        </div>
+
+        <div id="leaderboardLoading" class="leaderboard-loading">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p>Loading leaderboard data...</p>
+        </div>
+
+        <div id="leaderboardEmpty" class="leaderboard-empty" style="display: none;">
+          <i class="fas fa-user-slash"></i>
+          <p>No sit-in records found yet. Be the first to sit in!</p>
+        </div>
+
+        <div id="leaderboardContent" class="leaderboard-content" style="display: none;">
+          <!-- Top 3 Podium -->
+          <div class="podium-container" id="podiumContainer">
+            <!-- Dynamically populated by JS -->
+          </div>
+
+          <!-- Ranks 4-10 List -->
+          <div class="leaderboard-list-container">
+            <div class="leaderboard-list-header">
+              <span class="col-rank">Rank</span>
+              <span class="col-student">Student</span>
+              <span class="col-course">Course</span>
+              <span class="col-sessions">Sessions</span>
+              <span class="col-hours">Hours</span>
+            </div>
+            <div class="leaderboard-list-body" id="leaderboardListBody">
+              <!-- Dynamically populated by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     <script src="/js/navigation.js"></script>
+    <script src="/js/leaderboard.js"></script>
   </body>
 </html>
