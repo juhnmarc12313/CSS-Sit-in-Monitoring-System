@@ -3981,6 +3981,134 @@ function exportSitInReportPDF() {
         return;
       }
 
+      // Calculate statistics & charts data
+      let totalMinutes = 0;
+      let completedRecords = 0;
+      const labCounts = {};
+      const purposeCounts = {};
+      const studentStats = {};
+      const dailyCounts = {};
+      const uniqueStudents = new Set();
+
+      records.forEach((r) => {
+        uniqueStudents.add(r.id_number);
+
+        if (r.time_in && r.time_out) {
+          const timeIn = parseSQLiteDate(r.time_in);
+          const timeOut = parseSQLiteDate(r.time_out);
+          if (timeIn && timeOut) {
+            const diff = Math.round(Math.max(0, timeOut - timeIn) / (1000 * 60));
+            if (diff > 0) {
+              totalMinutes += diff;
+              completedRecords++;
+            }
+          }
+        }
+
+        const room = r.lab_room || "Unknown Lab";
+        labCounts[room] = (labCounts[room] || 0) + 1;
+        
+        const purpose = r.purpose || "Other";
+        purposeCounts[purpose] = (purposeCounts[purpose] || 0) + 1;
+
+        if (r.date) {
+          dailyCounts[r.date] = (dailyCounts[r.date] || 0) + 1;
+        }
+
+        const studentKey = r.id_number;
+        if (!studentStats[studentKey]) {
+          studentStats[studentKey] = {
+            name: `${r.first_name || ""} ${r.last_name || ""}`.trim() || "N/A",
+            course: r.course || "N/A",
+            sessions: 0,
+            minutes: 0,
+          };
+        }
+        studentStats[studentKey].sessions++;
+        if (r.time_in && r.time_out) {
+          const timeIn = parseSQLiteDate(r.time_in);
+          const timeOut = parseSQLiteDate(r.time_out);
+          if (timeIn && timeOut) {
+            const diff = Math.round(Math.max(0, timeOut - timeIn) / (1000 * 60));
+            if (diff > 0) {
+              studentStats[studentKey].minutes += diff;
+            }
+          }
+        }
+      });
+
+      const avgMinutes = completedRecords > 0 ? Math.round(totalMinutes / completedRecords) : 0;
+      const totalHoursVal = Math.floor(totalMinutes / 60);
+      const totalMinsVal = totalMinutes % 60;
+      const avgHrsVal = Math.floor(avgMinutes / 60);
+      const avgMinsVal = avgMinutes % 60;
+
+      const reportTotalSitins = records.length;
+      const reportAvgDuration = `${avgHrsVal}h ${avgMinsVal}m`;
+      const reportTotalHours = `${totalHoursVal}h ${totalMinsVal}m`;
+      const reportUniqueStudents = uniqueStudents.size;
+
+      let topLab = "N/A";
+      let maxCount = 0;
+      for (const lab in labCounts) {
+        if (labCounts[lab] > maxCount) {
+          maxCount = labCounts[lab];
+          topLab = lab;
+        }
+      }
+
+      // Format details for child tables
+      const totalLabRecords = Object.values(labCounts).reduce((a, b) => a + b, 0);
+      const labRows = Object.entries(labCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([lab, count]) => [
+          lab,
+          count,
+          `${Math.round((count / (totalLabRecords || 1)) * 100)}%`
+        ]);
+
+      const totalPurposeRecords = Object.values(purposeCounts).reduce((a, b) => a + b, 0);
+      const purposeRows = Object.entries(purposeCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([purpose, count]) => [
+          purpose,
+          count,
+          `${Math.round((count / (totalPurposeRecords || 1)) * 100)}%`
+        ]);
+
+      const dailyRows = Object.entries(dailyCounts)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([dateStr, count]) => {
+          const d = new Date(dateStr);
+          const formatted = d.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric"
+          });
+          return [formatted, count];
+        });
+      const recentDailyRows = dailyRows.slice(-5); // Recent 5 trend days for summary page
+
+      const sortedStudents = Object.entries(studentStats)
+        .sort((a, b) => b[1].sessions - a[1].sessions)
+        .slice(0, 5);
+      const rankBadges = ["🥇 Rank 1", "🥈 Rank 2", "🥉 Rank 3", "Rank 4", "Rank 5"];
+      const topStudentsRows = sortedStudents.map(([id, stats], index) => {
+        const hours = Math.floor(stats.minutes / 60);
+        const mins = stats.minutes % 60;
+        const avgMins = stats.sessions > 0 ? Math.round(stats.minutes / stats.sessions) : 0;
+        const avgHrs = Math.floor(avgMins / 60);
+        const avgRem = avgMins % 60;
+        return [
+          rankBadges[index] || `Rank ${index + 1}`,
+          stats.name,
+          stats.course,
+          stats.sessions,
+          `${hours}h ${mins}m`,
+          `${avgHrs}h ${avgRem}m`
+        ];
+      });
+
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({
         orientation: "landscape",
@@ -3989,29 +4117,27 @@ function exportSitInReportPDF() {
       });
 
       const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
 
-      // University Header
+      // University Header Block
+      doc.setFillColor(30, 27, 75); // Deep Indigo
+      doc.rect(0, 0, pageWidth, 26, "F");
+
+      // Title & Subtitle inside Header Block
       doc.setFont("Helvetica", "bold");
-      doc.setFontSize(16);
-      doc.setTextColor(30, 27, 75);
-      doc.text("University of Cebu Main CCS Sit-in Monitoring System", pageWidth / 2, 20, { align: "center" });
+      doc.setFontSize(15);
+      doc.setTextColor(255, 255, 255);
+      doc.text("University of Cebu Main CCS Sit-in Monitoring System", pageWidth / 2, 10, { align: "center" });
 
-      // Subtitle
       doc.setFont("Helvetica", "normal");
-      doc.setFontSize(12);
-      doc.setTextColor(71, 85, 105);
-      doc.text("Sit-in Records & Analytics Report", pageWidth / 2, 26, { align: "center" });
+      doc.setFontSize(11);
+      doc.text("Sit-in Reports & Analytics Dashboard Report", pageWidth / 2, 18, { align: "center" });
 
-      // Separator line
-      doc.setDrawColor(226, 232, 240);
-      doc.setLineWidth(0.5);
-      doc.line(14, 30, pageWidth - 14, 30);
-
-      // Report Metadata details
+      // Report Details
       doc.setFont("Helvetica", "bold");
       doc.setFontSize(10);
       doc.setTextColor(51, 65, 85);
-      doc.text("Report Details:", 14, 38);
+      doc.text("Report Details:", 14, 34);
 
       doc.setFont("Helvetica", "normal");
       let filtersApplied = [];
@@ -4020,12 +4146,135 @@ function exportSitInReportPDF() {
       if (labRoom) filtersApplied.push(`Lab: ${labRoom}`);
       if (course) filtersApplied.push(`Course: ${course}`);
       const filtersStr = filtersApplied.length > 0 ? filtersApplied.join(" | ") : "All Records";
-      doc.text(`Filters: ${filtersStr}`, 14, 44);
+      doc.text(`Filters Applied: ${filtersStr}`, 14, 40);
 
       const now = new Date();
-      doc.text(`Generated: ${now.toLocaleString()}`, pageWidth - 14, 44, { align: "right" });
+      doc.text(`Generated: ${now.toLocaleString()}`, pageWidth - 14, 40, { align: "right" });
 
-      // Table columns & rows
+      // Separator line
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.5);
+      doc.line(14, 43, pageWidth - 14, 43);
+
+      // Section 1: Summary Statistics (startY: 46)
+      doc.autoTable({
+        startY: 46,
+        head: [["Total Sit-ins", "Avg Session Duration", "Total Hours Accumulated", "Most Active Laboratory", "Unique Students"]],
+        body: [[reportTotalSitins, reportAvgDuration, reportTotalHours, topLab, reportUniqueStudents]],
+        theme: "grid",
+        headStyles: {
+          fillColor: [79, 70, 229], // Indigo-600
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 9.5,
+          halign: "center",
+          cellPadding: 3
+        },
+        bodyStyles: {
+          fontSize: 10,
+          fontStyle: "bold",
+          textColor: [30, 27, 75],
+          halign: "center",
+          cellPadding: 4
+        },
+        margin: { left: 14, right: 14 }
+      });
+
+      // Section 2: Laboratory & Purpose Utilizations (startY: ~70)
+      const startY2 = doc.lastAutoTable.finalY + 9;
+      doc.setFont("Helvetica", "bold");
+      doc.setFontSize(9.5);
+      doc.setTextColor(51, 65, 85);
+      doc.text("Laboratory Room Utilization", 14, startY2);
+      doc.text("Activity Purpose Distribution", 154, startY2);
+
+      doc.autoTable({
+        head: [["Lab Room", "Sit-ins Count", "Percentage"]],
+        body: labRows,
+        startY: startY2 + 3,
+        theme: "striped",
+        tableWidth: 125,
+        margin: { left: 14 },
+        headStyles: {
+          fillColor: [14, 165, 233], // Sky-500
+          textColor: [255, 255, 255],
+          fontSize: 8.5
+        },
+        styles: { fontSize: 8, cellPadding: 2.5 }
+      });
+      const table1FinalY = doc.lastAutoTable.finalY;
+
+      doc.autoTable({
+        head: [["Purpose", "Utilizations", "Percentage"]],
+        body: purposeRows,
+        startY: startY2 + 3,
+        theme: "striped",
+        tableWidth: 125,
+        margin: { left: 154 },
+        headStyles: {
+          fillColor: [168, 85, 247], // Purple-500
+          textColor: [255, 255, 255],
+          fontSize: 8.5
+        },
+        styles: { fontSize: 8, cellPadding: 2.5 }
+      });
+      const table2FinalY = doc.lastAutoTable.finalY;
+
+      // Section 3: Daily Trends & Top Students (startY: ~125)
+      const startY3 = Math.max(table1FinalY, table2FinalY) + 9;
+      doc.setFont("Helvetica", "bold");
+      doc.setFontSize(9.5);
+      doc.setTextColor(51, 65, 85);
+      doc.text("Daily Sit-in Trends (Recent)", 14, startY3);
+      doc.text("Top Active Students Summary", 154, startY3);
+
+      doc.autoTable({
+        head: [["Date", "Sit-ins Count"]],
+        body: recentDailyRows,
+        startY: startY3 + 3,
+        theme: "striped",
+        tableWidth: 125,
+        margin: { left: 14 },
+        headStyles: {
+          fillColor: [249, 115, 22], // Orange-500
+          textColor: [255, 255, 255],
+          fontSize: 8.5
+        },
+        styles: { fontSize: 8, cellPadding: 2.5 }
+      });
+
+      doc.autoTable({
+        head: [["Rank", "Student Name", "Course", "Sessions", "Total Time", "Avg Session"]],
+        body: topStudentsRows,
+        startY: startY3 + 3,
+        theme: "striped",
+        tableWidth: 125,
+        margin: { left: 154 },
+        headStyles: {
+          fillColor: [16, 185, 129], // Emerald-500
+          textColor: [255, 255, 255],
+          fontSize: 8.5
+        },
+        styles: { fontSize: 8, cellPadding: 2.5 }
+      });
+
+      // Page footer for cover page
+      doc.setFontSize(8);
+      doc.setTextColor(148, 163, 184);
+      doc.text("Page 1", pageWidth - 14, pageHeight - 8, { align: "right" });
+
+      // Page 2: Detailed Sit-in Records Archive
+      doc.addPage();
+      
+      doc.setFont("Helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(30, 27, 75);
+      doc.text("Detailed Sit-in Records Archive Log", 14, 15);
+
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.5);
+      doc.line(14, 18, pageWidth - 14, 18);
+
       const tableHeaders = ["Date", "Student ID", "Student Name", "Course", "Lab Room", "Purpose", "Time In", "Time Out", "Duration"];
       const tableRows = records.map(r => {
         const duration = r.time_out
@@ -4048,18 +4297,18 @@ function exportSitInReportPDF() {
       doc.autoTable({
         head: [tableHeaders],
         body: tableRows,
-        startY: 50,
+        startY: 22,
         theme: "striped",
         headStyles: {
-          fillColor: [99, 102, 241],
+          fillColor: [99, 102, 241], // Indigo-500
           textColor: [255, 255, 255],
           fontStyle: "bold",
-          fontSize: 9
+          fontSize: 8.5
         },
         styles: {
-          fontSize: 8.5,
+          fontSize: 8,
           font: "Helvetica",
-          cellPadding: 3
+          cellPadding: 2.5
         },
         alternateRowStyles: {
           fillColor: [248, 250, 252]
@@ -4069,7 +4318,7 @@ function exportSitInReportPDF() {
           const str = `Page ${doc.internal.getNumberOfPages()}`;
           doc.setFontSize(8);
           doc.setTextColor(148, 163, 184);
-          doc.text(str, pageWidth - 14, doc.internal.pageSize.getHeight() - 10, { align: "right" });
+          doc.text(str, pageWidth - 14, pageHeight - 8, { align: "right" });
         }
       });
 
