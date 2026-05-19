@@ -32,13 +32,13 @@ const upload = multer({
     storage: storage,
     limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
     fileFilter: function (req, file, cb) {
-        const allowedTypes = /jpeg|jpg|png|gif/;
+        const allowedTypes = /jpeg|jpg|png|gif|webp|jfif/;
         const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
         const mimetype = allowedTypes.test(file.mimetype);
         if (extname && mimetype) {
             cb(null, true);
         } else {
-            cb(new Error('Only image files (jpeg, jpg, png, gif) are allowed!'));
+            cb(new Error('Only image files (jpeg, jpg, png, gif, webp, jfif) are allowed!'));
         }
     }
 });
@@ -657,7 +657,14 @@ app.get('/api/user/:id', (req, res) => {
 });
 
 // Upload profile picture
-app.post('/api/user/:id/profile-picture', upload.single('profilePicture'), (req, res) => {
+app.post('/api/user/:id/profile-picture', (req, res, next) => {
+    upload.single('profilePicture')(req, res, (err) => {
+        if (err) {
+            return res.status(400).json({ error: err.message });
+        }
+        next();
+    });
+}, (req, res) => {
     const { id } = req.params;
 
     if (!req.file) {
