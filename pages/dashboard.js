@@ -3961,6 +3961,127 @@ function exportSitInReportCSV() {
     });
 }
 
+function exportSitInReportPDF() {
+  const dateFrom = document.getElementById("reportDateFrom").value;
+  const dateTo = document.getElementById("reportDateTo").value;
+  const labRoom = document.getElementById("reportLabRoom").value;
+  const course = document.getElementById("reportCourse").value;
+
+  const params = new URLSearchParams();
+  if (dateFrom) params.append("dateFrom", dateFrom);
+  if (dateTo) params.append("dateTo", dateTo);
+  if (labRoom) params.append("labRoom", labRoom);
+  if (course) params.append("course", course);
+
+  fetch(`/api/admin/sitin-reports?${params}`)
+    .then((response) => response.json())
+    .then((records) => {
+      if (!records || records.length === 0) {
+        alert("No data to export");
+        return;
+      }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: "a4"
+      });
+
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // University Header
+      doc.setFont("Helvetica", "bold");
+      doc.setFontSize(16);
+      doc.setTextColor(30, 27, 75);
+      doc.text("University of Cebu Main CCS Sit-in Monitoring System", pageWidth / 2, 20, { align: "center" });
+
+      // Subtitle
+      doc.setFont("Helvetica", "normal");
+      doc.setFontSize(12);
+      doc.setTextColor(71, 85, 105);
+      doc.text("Sit-in Records & Analytics Report", pageWidth / 2, 26, { align: "center" });
+
+      // Separator line
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.5);
+      doc.line(14, 30, pageWidth - 14, 30);
+
+      // Report Metadata details
+      doc.setFont("Helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(51, 65, 85);
+      doc.text("Report Details:", 14, 38);
+
+      doc.setFont("Helvetica", "normal");
+      let filtersApplied = [];
+      if (dateFrom) filtersApplied.push(`From: ${dateFrom}`);
+      if (dateTo) filtersApplied.push(`To: ${dateTo}`);
+      if (labRoom) filtersApplied.push(`Lab: ${labRoom}`);
+      if (course) filtersApplied.push(`Course: ${course}`);
+      const filtersStr = filtersApplied.length > 0 ? filtersApplied.join(" | ") : "All Records";
+      doc.text(`Filters: ${filtersStr}`, 14, 44);
+
+      const now = new Date();
+      doc.text(`Generated: ${now.toLocaleString()}`, pageWidth - 14, 44, { align: "right" });
+
+      // Table columns & rows
+      const tableHeaders = ["Date", "Student ID", "Student Name", "Course", "Lab Room", "Purpose", "Time In", "Time Out", "Duration"];
+      const tableRows = records.map(r => {
+        const duration = r.time_out
+          ? calculateDuration(r.time_in, r.time_out)
+          : "In Progress";
+        return [
+          r.date || "N/A",
+          r.id_number || "N/A",
+          `${r.first_name || ""} ${r.last_name || ""}`.trim() || "N/A",
+          r.course || "N/A",
+          r.lab_room || "N/A",
+          r.purpose || "N/A",
+          r.time_in ? formatTime(r.time_in) : "N/A",
+          r.time_out ? formatTime(r.time_out) : "N/A",
+          duration
+        ];
+      });
+
+      // Draw the table
+      doc.autoTable({
+        head: [tableHeaders],
+        body: tableRows,
+        startY: 50,
+        theme: "striped",
+        headStyles: {
+          fillColor: [99, 102, 241],
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          fontSize: 9
+        },
+        styles: {
+          fontSize: 8.5,
+          font: "Helvetica",
+          cellPadding: 3
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252]
+        },
+        margin: { left: 14, right: 14 },
+        didDrawPage: function (data) {
+          const str = `Page ${doc.internal.getNumberOfPages()}`;
+          doc.setFontSize(8);
+          doc.setTextColor(148, 163, 184);
+          doc.text(str, pageWidth - 14, doc.internal.pageSize.getHeight() - 10, { align: "right" });
+        }
+      });
+
+      const filename = `sitin_report_${now.toISOString().split("T")[0]}.pdf`;
+      doc.save(filename);
+    })
+    .catch((error) => {
+      console.error("Error exporting report to PDF:", error);
+      alert("Failed to export report to PDF");
+    });
+}
+
 // =============================================
 // Utility Functions
 // =============================================
