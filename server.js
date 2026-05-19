@@ -11,7 +11,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Create uploads directory if it doesn't exist
-const uploadsDir = path.join(__dirname, 'uploads');
+const uploadsDir = process.env.VERCEL || process.env.NOW_BUILDER
+    ? '/tmp/uploads'
+    : path.join(__dirname, 'uploads');
+
 if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
 }
@@ -688,7 +691,9 @@ app.post('/api/user/:id/profile-picture', (req, res, next) => {
 
             // Delete old profile picture if exists
             if (user && user.profile_picture) {
-                const oldPath = path.join(__dirname, user.profile_picture);
+                const oldPath = user.profile_picture.startsWith('/uploads/')
+                    ? path.join(uploadsDir, user.profile_picture.replace('/uploads/', ''))
+                    : path.join(__dirname, user.profile_picture);
                 fs.unlink(oldPath, (unlinkErr) => {
                     if (unlinkErr) console.error('Error deleting old profile picture:', unlinkErr.message);
                 });
