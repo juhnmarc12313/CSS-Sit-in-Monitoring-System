@@ -836,6 +836,43 @@ async function resetStudentSessions(studentId, studentName) {
   showLoading(false);
 }
 
+// Reset sessions for ALL students to default (30)
+async function resetAllStudentSessions() {
+  if (
+    !confirm(
+      "Are you sure you want to reset remaining sessions for ALL active students to 30? This action cannot be undone."
+    )
+  ) {
+    return;
+  }
+
+  showLoading(true);
+  try {
+    const response = await fetch("/api/admin/students/reset-all-sessions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      }
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      showSuccessModal(
+        "Sessions Reset",
+        `Remaining sessions for all students have been reset to 30 successfully! (Updated ${data.updatedCount || 0} students)`
+      );
+      loadAllStudents(); // Refresh the table
+    } else {
+      const error = await response.json();
+      showErrorModal("Error", error.error || "Failed to reset all student sessions");
+    }
+  } catch (error) {
+    console.error("Error resetting all sessions:", error);
+    showErrorModal("Error", "An error occurred while resetting sessions");
+  }
+  showLoading(false);
+}
+
 async function updateStudentSessions(studentId, sessions) {
   try {
     const response = await fetch(`/api/admin/students/${studentId}/sessions`, {

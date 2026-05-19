@@ -1527,6 +1527,19 @@ app.put('/api/admin/students/:id/sessions', (req, res) => {
     });
 });
 
+// Reset all students remaining sessions to default 30 (admin)
+app.post('/api/admin/students/reset-all-sessions', (req, res) => {
+    const defaultSessions = 30;
+    const query = `UPDATE users SET remaining_sessions = ?, updated_at = CURRENT_TIMESTAMP WHERE role = 'student' AND is_active = 1`;
+
+    db.run(query, [defaultSessions], function (err) {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to reset all sessions: ' + err.message });
+        }
+        res.json({ message: `Successfully reset sessions to ${defaultSessions} for all active students.`, updatedCount: this.changes });
+    });
+});
+
 // Delete student (admin)
 app.delete('/api/admin/students/:id', (req, res) => {
     const { id } = req.params;
