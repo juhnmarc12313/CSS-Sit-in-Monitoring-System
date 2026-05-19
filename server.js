@@ -721,6 +721,16 @@ app.post('/api/sitin/checkin', (req, res) => {
         if (err) {
             return res.status(500).json({ error: 'Check-in failed: ' + err.message });
         }
+
+        // Create notification for the user
+        const title = 'Session Started';
+        const message = `Your sit-in session in ${lab_room || 'the lab'} has been started by the administrator${pc_number ? ` (PC-${pc_number})` : ''}.`;
+        
+        db.run(`INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)`, 
+            [user_id, title, message], (notifErr) => {
+                if (notifErr) console.error('Error creating checkin notification:', notifErr.message);
+            });
+
         res.status(201).json({ message: 'Check-in successful', recordId: this.lastID });
     });
 });
