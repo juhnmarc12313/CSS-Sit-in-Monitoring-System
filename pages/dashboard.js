@@ -2430,12 +2430,17 @@ function displayComputerStatus(labs) {
 function viewLabDetails(labName) {
   showLoading(true);
 
-  fetch("/api/admin/active-sitins")
-    .then(response => {
-      if (!response.ok) throw new Error("Failed to load active sessions");
-      return response.json();
+  Promise.all([
+    fetch("/api/admin/active-sitins").then(res => {
+      if (!res.ok) throw new Error("Failed to load active sessions");
+      return res.json();
+    }),
+    fetch("/api/disabled-pcs").then(res => {
+      if (!res.ok) throw new Error("Failed to load disabled PCs");
+      return res.json();
     })
-    .then(records => {
+  ])
+    .then(([records, disabledPcsList]) => {
       showLoading(false);
       
       // Filter records for this lab room with name normalization
@@ -2451,6 +2456,21 @@ function viewLabDetails(labName) {
               : roomName === 'Lab 6' ? 'Lab 544' : roomName);
         return normalizedRoom.toLowerCase() === labName.toLowerCase();
       });
+
+      // Filter disabled PCs for this lab room with name normalization
+      const labDisabledPcs = disabledPcsList.filter(d => {
+        const roomName = d.lab_room || "";
+        const normalizedRoom = roomName.startsWith('Lab ') && !isNaN(roomName.substring(4))
+            ? roomName
+            : (roomName === 'Lab 1' ? 'Lab 524'
+              : roomName === 'Lab 2' ? 'Lab 526'
+              : roomName === 'Lab 3' ? 'Lab 528'
+              : roomName === 'Lab 4' ? 'Lab 530'
+              : roomName === 'Lab 5' ? 'Lab 542'
+              : roomName === 'Lab 6' ? 'Lab 544' : roomName);
+        return normalizedRoom.toLowerCase() === labName.toLowerCase();
+      });
+      const disabledSeats = labDisabledPcs.map(d => d.pc_number);
 
       // Map occupied seats (PC number -> student record)
       const occupiedSeats = {};
@@ -2476,10 +2496,23 @@ function viewLabDetails(labName) {
         for (let col = 1; col <= 7; col++) {
           const seatNum = (row - 1) * 7 + col;
           const occupier = occupiedSeats[seatNum];
-          const statusColor = occupier ? "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)" : "linear-gradient(135deg, #10b981 0%, #047857 100%)";
-          const tooltip = occupier 
-            ? `Occupied by: ${occupier.first_name} ${occupier.last_name} (${occupier.id_number})\nStarted: ${formatTime(occupier.time_in)}`
-            : `PC Seat ${seatNum} (Available)`;
+          const isDisabled = disabledSeats.includes(seatNum);
+
+          let statusColor = "linear-gradient(135deg, #10b981 0%, #047857 100%)"; // Available (Green)
+          let tooltip = `PC Seat ${seatNum} (Available)`;
+          let clickHandler = `onclick="togglePCStatus('${escapeHtml(labName)}', ${seatNum}, false)"`;
+          let pcIcon = "fa-desktop";
+
+          if (occupier) {
+            statusColor = "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)"; // Occupied (Red)
+            tooltip = `Occupied by: ${occupier.first_name} ${occupier.last_name} (${occupier.id_number})\nStarted: ${formatTime(occupier.time_in)}`;
+            clickHandler = `onclick="showOccupierAlert('${escapeHtml(occupier.first_name)} ${escapeHtml(occupier.last_name)}', '${escapeHtml(occupier.id_number)}', '${formatTime(occupier.time_in)}', '${escapeHtml(occupier.purpose)}', ${seatNum})"`;
+          } else if (isDisabled) {
+            statusColor = "linear-gradient(135deg, #64748b 0%, #475569 100%)"; // Disabled (Gray)
+            tooltip = `PC Seat ${seatNum} (Disabled by Admin)`;
+            clickHandler = `onclick="togglePCStatus('${escapeHtml(labName)}', ${seatNum}, true)"`;
+            pcIcon = "fa-ban";
+          }
           
           rowHtml += `
             <div class="visual-seat-node animate__animated animate__zoomIn" title="${escapeHtml(tooltip)}" style="
@@ -2492,16 +2525,16 @@ function viewLabDetails(labName) {
               align-items: center;
               justify-content: center;
               border-radius: 8px;
-              cursor: ${occupier ? "pointer" : "default"};
+              cursor: pointer;
               position: relative;
               font-weight: 700;
               font-size: 11px;
               box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
               transition: all 0.2s;
             "
-            ${occupier ? `onclick="showOccupierAlert('${escapeHtml(occupier.first_name)} ${escapeHtml(occupier.last_name)}', '${escapeHtml(occupier.id_number)}', '${formatTime(occupier.time_in)}', '${escapeHtml(occupier.purpose)}', ${seatNum})"` : ""}
+            ${clickHandler}
             >
-              <i class="fas fa-desktop" style="font-size: 14px; margin-bottom: 2px;"></i>
+              <i class="fas ${pcIcon}" style="font-size: 14px; margin-bottom: 2px;"></i>
               <span>${seatNum}</span>
             </div>
           `;
@@ -2511,7 +2544,8 @@ function viewLabDetails(labName) {
       }
 
       const activeCount = labRecords.length;
-      const vacantCount = 49 - activeCount;
+      const disabledCount = disabledSeats.length;
+      const vacantCount = 49 - activeCount - disabledCount;
 
       modal.innerHTML = `
         <div class="modal-content animate__animated animate__fadeInUp" style="max-width: 550px; padding: 25px; border-radius: 16px; border: none; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);">
@@ -2520,18 +2554,22 @@ function viewLabDetails(labName) {
             <i class="fas fa-laptop" style="color: #4f46e5;"></i> Live Lab Monitor: ${escapeHtml(labName)}
           </h3>
           <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">
-            Real-time seat layout. Hover/click occupied PC terminals (<span style="color: #ef4444; font-weight: 700;">Red</span>) to inspect active user sessions.
+            Real-time seat layout. Click an available PC to <span style="color: #64748b; font-weight: 700;">Disable</span> it, or a disabled PC to <span style="color: #10b981; font-weight: 700;">Enable</span> it.
           </p>
 
           <!-- Lab status overview badges -->
           <div style="display: flex; gap: 12px; margin-bottom: 25px;">
             <div style="flex: 1; background: #fee2e2; color: #991b1b; padding: 12px; border-radius: 12px; text-align: center; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
-              <span style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Occupied Seats</span>
-              <span style="font-size: 22px; font-weight: 800;">${activeCount}</span>
+              <span style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Occupied</span>
+              <span style="font-size: 20px; font-weight: 800;">${activeCount}</span>
             </div>
             <div style="flex: 1; background: #d1fae5; color: #065f46; padding: 12px; border-radius: 12px; text-align: center; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
-              <span style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Available Seats</span>
-              <span style="font-size: 22px; font-weight: 800;">${vacantCount}</span>
+              <span style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Available</span>
+              <span style="font-size: 20px; font-weight: 800;">${vacantCount}</span>
+            </div>
+            <div style="flex: 1; background: #f1f5f9; color: #475569; padding: 12px; border-radius: 12px; text-align: center; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
+              <span style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Disabled</span>
+              <span style="font-size: 20px; font-weight: 800;">${disabledCount}</span>
             </div>
           </div>
 
@@ -2561,6 +2599,32 @@ function closeLabVisualModal() {
   const modal = document.getElementById("labVisualDetailsModal");
   if (modal) {
     modal.classList.add("hidden");
+  }
+}
+
+function togglePCStatus(labName, pcNumber, isCurrentlyDisabled) {
+  const action = isCurrentlyDisabled ? "Enable" : "Disable";
+  
+  if (confirm(`Are you sure you want to ${action} PC-${pcNumber} in ${labName}?`)) {
+    showLoading(true);
+    fetch(isCurrentlyDisabled ? "/api/admin/disabled-pcs" : "/api/admin/disabled-pcs", {
+      method: isCurrentlyDisabled ? "DELETE" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lab_room: labName, pc_number: pcNumber })
+    })
+      .then(response => {
+        if (!response.ok) throw new Error(`Failed to ${action} PC`);
+        return response.json();
+      })
+      .then(data => {
+        showLoading(false);
+        viewLabDetails(labName);
+      })
+      .catch(error => {
+        showLoading(false);
+        console.error(error);
+        showErrorModal("Error", `Failed to ${action} PC. Please try again.`);
+      });
   }
 }
 
@@ -4175,14 +4239,22 @@ async function fetchAndRenderPCGrid(labRoom, date) {
   container.innerHTML = '<div style="text-align: center; padding: 25px; grid-column: 1 / -1; color: #64748b;"><i class="fas fa-spinner fa-spin fa-lg"></i> Loading lab PC layout...</div>';
 
   let takenPCs = [];
+  let disabledPCs = [];
   try {
-    const response = await fetch(`/api/reservations/taken?lab_room=${encodeURIComponent(labRoom)}&date=${encodeURIComponent(date)}`);
-    if (response.ok) {
-      const data = await response.json();
+    const [takenRes, disabledRes] = await Promise.all([
+      fetch(`/api/reservations/taken?lab_room=${encodeURIComponent(labRoom)}&date=${encodeURIComponent(date)}`),
+      fetch(`/api/disabled-pcs?lab_room=${encodeURIComponent(labRoom)}`)
+    ]);
+    if (takenRes.ok) {
+      const data = await takenRes.json();
       takenPCs = data.takenPCs || [];
     }
+    if (disabledRes.ok) {
+      const data = await disabledRes.json();
+      disabledPCs = data.map(d => d.pc_number);
+    }
   } catch (error) {
-    console.error("Error fetching taken PCs:", error);
+    console.error("Error fetching PC grid data:", error);
   }
 
   // Reset PC input selection display
@@ -4209,27 +4281,39 @@ async function fetchAndRenderPCGrid(labRoom, date) {
     for (let c = 1; c <= pcsPerRow; c++) {
       const pcNum = (r - 1) * pcsPerRow + c;
       const isTaken = takenPCs.includes(pcNum);
+      const isDisabled = disabledPCs.includes(pcNum);
 
       const pcBtn = document.createElement("button");
       pcBtn.type = "button";
-      pcBtn.className = `pc-btn ${isTaken ? "taken" : ""}`;
-      pcBtn.dataset.pcNumber = pcNum;
 
-      pcBtn.innerHTML = `
-        <i class="fas fa-desktop"></i>
-        <span>PC-${pcNum}</span>
-      `;
-
-      if (!isTaken) {
-        pcBtn.addEventListener("click", () => {
-          const allButtons = container.querySelectorAll(".pc-btn");
-          allButtons.forEach(b => b.classList.remove("selected"));
-
-          pcBtn.classList.add("selected");
-          document.getElementById("resPCNumber").value = pcNum;
-        });
+      if (isDisabled) {
+        pcBtn.className = "pc-btn disabled-pc";
+        pcBtn.dataset.pcNumber = pcNum;
+        pcBtn.disabled = true;
+        pcBtn.innerHTML = `
+          <i class="fas fa-ban" style="color: #ef4444;"></i>
+          <span style="text-decoration: line-through; color: #94a3b8;">PC-${pcNum}</span>
+        `;
+        pcBtn.title = "This PC has been disabled by the administrator.";
       } else {
-        pcBtn.title = "This PC is already reserved for this session.";
+        pcBtn.className = `pc-btn ${isTaken ? "taken" : ""}`;
+        pcBtn.dataset.pcNumber = pcNum;
+        pcBtn.innerHTML = `
+          <i class="fas fa-desktop"></i>
+          <span>PC-${pcNum}</span>
+        `;
+
+        if (!isTaken) {
+          pcBtn.addEventListener("click", () => {
+            const allButtons = container.querySelectorAll(".pc-btn");
+            allButtons.forEach(b => b.classList.remove("selected"));
+
+            pcBtn.classList.add("selected");
+            document.getElementById("resPCNumber").value = pcNum;
+          });
+        } else {
+          pcBtn.title = "This PC is already reserved for this session.";
+        }
       }
 
       buttonsContainer.appendChild(pcBtn);

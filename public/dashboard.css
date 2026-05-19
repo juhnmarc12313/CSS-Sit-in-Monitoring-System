@@ -4397,4 +4397,26 @@ body {
 .switch input:checked + .slider:before {
   transform: translateX(22px);
 }
+
+/* Disabled PC terminal styling */
+.pc-btn.disabled-pc {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #94a3b8;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.pc-btn.disabled-pc:hover {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #94a3b8 !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.legend-color.disabled-pc-color {
+  background: #f1f5f9;
+  border: 2px solid #cbd5e1;
+}
 

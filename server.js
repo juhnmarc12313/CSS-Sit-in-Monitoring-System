@@ -715,24 +715,40 @@ app.post('/api/sitin/checkin', (req, res) => {
         return res.status(400).json({ error: 'User ID is required' });
     }
 
-    const query = `INSERT INTO sit_in_records (user_id, lab_room, purpose, pc_number) VALUES (?, ?, ?, ?)`;
+    const doCheckin = () => {
+        const query = `INSERT INTO sit_in_records (user_id, lab_room, purpose, pc_number) VALUES (?, ?, ?, ?)`;
 
-    db.run(query, [user_id, lab_room, purpose, pc_number || null], function (err) {
-        if (err) {
-            return res.status(500).json({ error: 'Check-in failed: ' + err.message });
-        }
+        db.run(query, [user_id, lab_room, purpose, pc_number || null], function (err) {
+            if (err) {
+                return res.status(500).json({ error: 'Check-in failed: ' + err.message });
+            }
 
-        // Create notification for the user
-        const title = 'Session Started';
-        const message = `Your sit-in session in ${lab_room || 'the lab'} has been started by the administrator${pc_number ? ` (PC-${pc_number})` : ''}.`;
-        
-        db.run(`INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)`, 
-            [user_id, title, message], (notifErr) => {
-                if (notifErr) console.error('Error creating checkin notification:', notifErr.message);
-            });
+            // Create notification for the user
+            const title = 'Session Started';
+            const message = `Your sit-in session in ${lab_room || 'the lab'} has been started by the administrator${pc_number ? ` (PC-${pc_number})` : ''}.`;
+            
+            db.run(`INSERT INTO notifications (user_id, title, message) VALUES (?, ?, ?)`, 
+                [user_id, title, message], (notifErr) => {
+                    if (notifErr) console.error('Error creating checkin notification:', notifErr.message);
+                });
 
-        res.status(201).json({ message: 'Check-in successful', recordId: this.lastID });
-    });
+            res.status(201).json({ message: 'Check-in successful', recordId: this.lastID });
+        });
+    };
+
+    if (pc_number) {
+        db.get(`SELECT id FROM disabled_pcs WHERE lab_room = ? AND pc_number = ?`, [lab_room, pc_number], (disabledErr, disabledRow) => {
+            if (disabledErr) {
+                return res.status(500).json({ error: 'Database verification failed: ' + disabledErr.message });
+            }
+            if (disabledRow) {
+                return res.status(400).json({ error: `PC-${pc_number} is currently disabled by the administrator.` });
+            }
+            doCheckin();
+        });
+    } else {
+        doCheckin();
+    }
 });
 
 // Sit-in check-out endpoint
@@ -943,22 +959,32 @@ app.post('/api/reservations', (req, res) => {
             return res.status(403).json({ error: 'The reservation system is currently disabled by the administrator.' });
         }
 
-        // Check if PC is already booked/pending for this lab on this date
-        const checkQuery = `SELECT id FROM reservations WHERE lab_room = ? AND date = ? AND pc_number = ? AND status IN ('approved', 'pending')`;
-        db.get(checkQuery, [lab_room, date, pc_number], (checkErr, row) => {
-            if (checkErr) {
-                return res.status(500).json({ error: 'Database verification failed: ' + checkErr.message });
+        // Check if PC is disabled
+        db.get(`SELECT id FROM disabled_pcs WHERE lab_room = ? AND pc_number = ?`, [lab_room, pc_number], (disabledErr, disabledRow) => {
+            if (disabledErr) {
+                return res.status(500).json({ error: 'Database verification failed: ' + disabledErr.message });
             }
-            if (row) {
-                return res.status(409).json({ error: `PC-${pc_number} is already reserved in ${lab_room} on this date.` });
+            if (disabledRow) {
+                return res.status(400).json({ error: `PC-${pc_number} is currently disabled by the administrator.` });
             }
 
-            const query = `INSERT INTO reservations (user_id, lab_room, date, time, purpose, pc_number) VALUES (?, ?, ?, ?, ?, ?)`;
-            db.run(query, [user_id, lab_room, date, time, purpose, pc_number], function (err) {
-                if (err) {
-                    return res.status(500).json({ error: 'Failed to submit reservation: ' + err.message });
+            // Check if PC is already booked/pending for this lab on this date
+            const checkQuery = `SELECT id FROM reservations WHERE lab_room = ? AND date = ? AND pc_number = ? AND status IN ('approved', 'pending')`;
+            db.get(checkQuery, [lab_room, date, pc_number], (checkErr, row) => {
+                if (checkErr) {
+                    return res.status(500).json({ error: 'Database verification failed: ' + checkErr.message });
                 }
-                res.status(201).json({ message: 'Reservation request submitted', id: this.lastID });
+                if (row) {
+                    return res.status(409).json({ error: `PC-${pc_number} is already reserved in ${lab_room} on this date.` });
+                }
+
+                const query = `INSERT INTO reservations (user_id, lab_room, date, time, purpose, pc_number) VALUES (?, ?, ?, ?, ?, ?)`;
+                db.run(query, [user_id, lab_room, date, time, purpose, pc_number], function (err) {
+                    if (err) {
+                        return res.status(500).json({ error: 'Failed to submit reservation: ' + err.message });
+                    }
+                    res.status(201).json({ message: 'Reservation request submitted', id: this.lastID });
+                });
             });
         });
     });
@@ -1835,6 +1861,17 @@ db.run(`
     )
 `);
 
+// Create disabled_pcs table if not exists
+db.run(`
+    CREATE TABLE IF NOT EXISTS disabled_pcs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        lab_room TEXT NOT NULL,
+        pc_number INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(lab_room, pc_number)
+    )
+`);
+
 // Add priority column if it doesn't exist
 db.run(`ALTER TABLE announcements ADD COLUMN priority TEXT DEFAULT 'normal'`, (err) => {
     if (err && !err.message.includes('duplicate column name')) {
@@ -2012,6 +2049,57 @@ app.post('/api/notifications', (req, res) => {
             return res.status(500).json({ error: 'Failed to create notification: ' + err.message });
         }
         res.status(201).json({ message: 'Notification created', id: this.lastID });
+    });
+});
+
+// =============================================
+// Disabled PCs API
+// =============================================
+
+// Get disabled PCs (public)
+app.get('/api/disabled-pcs', (req, res) => {
+    const { lab_room } = req.query;
+    let query = `SELECT * FROM disabled_pcs`;
+    const params = [];
+    if (lab_room) {
+        query += ` WHERE lab_room = ?`;
+        params.push(lab_room);
+    }
+    db.all(query, params, (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to fetch disabled PCs: ' + err.message });
+        }
+        res.json(rows);
+    });
+});
+
+// Disable a PC (admin only)
+app.post('/api/admin/disabled-pcs', (req, res) => {
+    const { lab_room, pc_number } = req.body;
+    if (!lab_room || !pc_number) {
+        return res.status(400).json({ error: 'lab_room and pc_number are required' });
+    }
+    const query = `INSERT INTO disabled_pcs (lab_room, pc_number) VALUES (?, ?) ON CONFLICT(lab_room, pc_number) DO NOTHING`;
+    db.run(query, [lab_room, pc_number], function (err) {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to disable PC: ' + err.message });
+        }
+        res.status(201).json({ message: 'PC disabled successfully' });
+    });
+});
+
+// Enable a PC (admin only)
+app.delete('/api/admin/disabled-pcs', (req, res) => {
+    const { lab_room, pc_number } = req.body;
+    if (!lab_room || !pc_number) {
+        return res.status(400).json({ error: 'lab_room and pc_number are required' });
+    }
+    const query = `DELETE FROM disabled_pcs WHERE lab_room = ? AND pc_number = ?`;
+    db.run(query, [lab_room, pc_number], function (err) {
+        if (err) {
+            return res.status(500).json({ error: 'Failed to enable PC: ' + err.message });
+        }
+        res.json({ message: 'PC enabled successfully' });
     });
 });
 
